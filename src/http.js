@@ -5,7 +5,8 @@
 const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('crypto');
 const { getJwk } = require('./crypto');
 const { log } = require('./logger');
-const axios = require('./axios');
+// const axios = require('./axios');
+import xior from 'xior';
 
 /**
  * ACME HTTP client
