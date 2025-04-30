@@ -55,7 +55,13 @@ class HttpClient {
 
         /* Request */
         log(`HTTP request: ${method} ${url}`);
-        const resp = await axios.request(opts);
+        // const resp = await axios.request(opts);
+        let resp = await xior.request(opts);
+        const headers = {};
+        for (const [key, value] of resp.headers) {
+            headers[key] = value;
+        }
+        resp.headers = headers
 
         log(`RESP ${resp.status} ${method} ${url}`);
         return resp;
