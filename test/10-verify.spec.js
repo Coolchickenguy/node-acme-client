@@ -4,12 +4,21 @@
 
 const { randomUUID: uuid } = require('crypto');
 const { assert } = require('chai');
+const { setGlobalDispatcher, getGlobalDispatcher, Agent } = require('undici');
 const cts = require('./challtestsrv');
 const verify = require('./../src/verify');
 
 const domainName = process.env.ACME_DOMAIN_NAME || 'example.com';
 
 describe('verify', () => {
+    let originalDispatcher;
+
+    const undiciAgent = new Agent({
+        connect: {
+            rejectUnauthorized: false,
+        },
+    });
+
     const challengeTypes = ['http-01', 'dns-01'];
 
     const testHttp01Authz = { identifier: { type: 'dns', value: `${uuid()}.${domainName}` } };
@@ -37,8 +46,20 @@ describe('verify', () => {
         if (!cts.isEnabled()) {
             this.skip();
         }
+        else {
+            // Allow self-signed certificates to interact with the pebble server (uses self-signed certificates)
+            originalDispatcher = getGlobalDispatcher();
+            setGlobalDispatcher(undiciAgent);
+        }
     });
 
+    /**
+     * Reset undici dispacher
+     */
+
+    after(function () {
+        setGlobalDispatcher(originalDispatcher);
+    })
     /**
      * API
      */
