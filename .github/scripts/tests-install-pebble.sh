@@ -5,6 +5,7 @@
 set -euo pipefail
 
 CONFIG_NAME="pebble-config.json"
+arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo amd64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
 
 # Use Pebble EAB config if enabled
 set +u
@@ -22,10 +23,10 @@ wget -nv "https://raw.githubusercontent.com/letsencrypt/pebble/v${PEBBLE_VERSION
 wget -nv "https://raw.githubusercontent.com/letsencrypt/pebble/v${PEBBLE_VERSION}/test/config/${CONFIG_NAME}" -O /etc/pebble/pebble.json
 
 # Download and install Pebble
-wget -nv "https://github.com/letsencrypt/pebble/releases/download/v${PEBBLE_VERSION}/pebble-linux-amd64.tar.gz" -O /tmp/pebble.tar.gz
+wget -nv "https://github.com/letsencrypt/pebble/releases/download/v${PEBBLE_VERSION}/pebble-linux-${arch}.tar.gz" -O /tmp/pebble.tar.gz
 tar zxvf /tmp/pebble.tar.gz -C /tmp
 
-mv /tmp/pebble-linux-amd64/linux/amd64/pebble /usr/local/bin/pebble
+mv /tmp/pebble-linux-${arch}/linux/${arch}/pebble /usr/local/bin/pebble
 chown root:root /usr/local/bin/pebble
 chmod 0755 /usr/local/bin/pebble
 
