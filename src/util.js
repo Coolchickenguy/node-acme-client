@@ -4,7 +4,7 @@
 
 const tls = require('tls');
 const dns = require('dns').promises;
-const { readCertificateInfo, splitPemChain } = require('./crypto');
+const { readCertificateInfo, splitPemChain } = require('./crypto/web');
 const { log } = require('./logger');
 
 /**

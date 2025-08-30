@@ -30,7 +30,6 @@
         "eslint-plugin-import": "^2.29.1",
         "jsdoc-to-markdown": "^8.0.1",
         "mocha": "^10.6.0",
-        "nock": "^13.5.4",
         "tsd": "^0.31.1",
         "undici": "^7.15.0"
     },

@@ -2,17 +2,24 @@
  * ACME HTTP client
  */
 
-const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('crypto');
-const { getJwk } = require('./crypto');
+const {
+    getJwk,
+    base64ToUint8Array,
+    arrayBufferToBase64,
+    base64ToBase64url,
+    getWebCryptoKeyPair,
+} = require('./crypto/web');
 const { log } = require('./logger');
 const axios = require('./axios');
+
+const textEncoder = new TextEncoder();
 
 /**
  * ACME HTTP client
  *
  * @class
  * @param {string} directoryUrl ACME directory URL
- * @param {buffer} accountKey PEM encoded account private key
+ * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} accountKey PEM encoded account public/private key
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
  * @param {string} [opts.externalAccountBinding.hmacKey] External account binding HMAC key
@@ -20,6 +27,17 @@ const axios = require('./axios');
 
 class HttpClient {
     constructor(directoryUrl, accountKey, externalAccountBinding = {}) {
+        if (accountKey) {
+            if (!(accountKey.privateKey instanceof Uint8Array)) {
+                accountKey.privateKey = textEncoder.encode(
+                    accountKey.privateKey,
+                );
+            }
+            if (!(accountKey.publicKey instanceof Uint8Array)) {
+                accountKey.publicKey = textEncoder.encode(accountKey.publicKey);
+            }
+        }
+
         this.directoryUrl = directoryUrl;
         this.accountKey = accountKey;
         this.externalAccountBinding = externalAccountBinding;
@@ -61,9 +79,9 @@ class HttpClient {
 
         // Remap headers
         const headers = {};
-        for (const [key, value] of resp.headers) { // eslint-disable-line no-restricted-syntax
+        resp.headers.forEach((value, key) => {
             headers[key] = value;
-        }
+        });
         resp.headers = headers;
 
         return resp;
@@ -79,18 +97,22 @@ class HttpClient {
 
     async getDirectory() {
         const now = Math.floor(Date.now() / 1000);
-        const age = (now - this.directoryTimestamp);
+        const age = now - this.directoryTimestamp;
 
-        if (!this.directoryCache || (age > this.directoryMaxAge)) {
+        if (!this.directoryCache || age > this.directoryMaxAge) {
             log(`Refreshing ACME directory, age: ${age}`);
             const resp = await this.request(this.directoryUrl, 'get');
 
             if (resp.status >= 400) {
-                throw new Error(`Attempting to read ACME directory returned error ${resp.status}: ${this.directoryUrl}`);
+                throw new Error(
+                    `Attempting to read ACME directory returned error ${resp.status}: ${this.directoryUrl}`,
+                );
             }
 
             if (!resp.data) {
-                throw new Error('Attempting to read ACME directory returned no data');
+                throw new Error(
+                    'Attempting to read ACME directory returned no data',
+                );
             }
 
             this.directoryCache = resp.data;
@@ -103,12 +125,12 @@ class HttpClient {
     /**
      * Get JSON Web Key
      *
-     * @returns {object} JSON Web Key
+     * @returns {Promise<object>} JSON Web Key
      */
 
-    getJwk() {
+    async getJwk() {
         if (!this.jwk) {
-            this.jwk = getJwk(this.accountKey);
+            this.jwk = await getJwk(this.accountKey.publicKey);
         }
 
         return this.jwk;
@@ -144,7 +166,9 @@ class HttpClient {
         const dir = await this.getDirectory();
 
         if (!dir[resource]) {
-            throw new Error(`Unable to locate API resource URL in ACME directory: "${resource}"`);
+            throw new Error(
+                `Unable to locate API resource URL in ACME directory: "${resource}"`,
+            );
         }
 
         return dir[resource];
@@ -160,7 +184,7 @@ class HttpClient {
     async getMetaField(field) {
         const dir = await this.getDirectory();
 
-        if (('meta' in dir) && (field in dir.meta)) {
+        if ('meta' in dir && field in dir.meta) {
             return dir.meta[field];
         }
 
@@ -176,10 +200,15 @@ class HttpClient {
      * @param {object} [opts]
      * @param {string} [opts.nonce] JWS anti-replay nonce
      * @param {string} [opts.kid] JWS KID
-     * @returns {object} Signed HTTP request body
+     * @returns {Promise<object>} Signed HTTP request body
      */
 
-    prepareSignedBody(alg, url, payload = null, { nonce = null, kid = null } = {}) {
+    async prepareSignedBody(
+        alg,
+        url,
+        payload = null,
+        { nonce = null, kid = null } = {},
+    ) {
         const header = { alg, url };
 
         /* Nonce */
@@ -193,13 +222,21 @@ class HttpClient {
             header.kid = kid;
         }
         else {
-            header.jwk = this.getJwk();
+            header.jwk = await this.getJwk();
         }
 
         /* Body */
         return {
-            payload: payload ? Buffer.from(JSON.stringify(payload)).toString('base64url') : '',
-            protected: Buffer.from(JSON.stringify(header)).toString('base64url'),
+            payload: payload
+                ? base64ToBase64url(
+                    arrayBufferToBase64(
+                        textEncoder.encode(JSON.stringify(payload)),
+                    ),
+                )
+                : '',
+            protected: base64ToBase64url(
+                arrayBufferToBase64(textEncoder.encode(JSON.stringify(header))),
+            ),
         };
     }
 
@@ -212,15 +249,36 @@ class HttpClient {
      * @param {object} [opts]
      * @param {string} [opts.nonce] JWS anti-replay nonce
      * @param {string} [opts.kid] JWS KID
-     * @returns {object} Signed HMAC request body
+     * @returns {Promise<object>} Signed HMAC request body
      */
 
-    createSignedHmacBody(hmacKey, url, payload = null, { nonce = null, kid = null } = {}) {
-        const result = this.prepareSignedBody('HS256', url, payload, { nonce, kid });
+    async createSignedHmacBody(
+        hmacKey,
+        url,
+        payload = null,
+        { nonce = null, kid = null } = {},
+    ) {
+        const result = await this.prepareSignedBody('HS256', url, payload, {
+            nonce,
+            kid,
+        });
 
         /* Signature */
-        const signer = createHmac('SHA256', Buffer.from(hmacKey, 'base64')).update(`${result.protected}.${result.payload}`, 'utf8');
-        result.signature = signer.digest().toString('base64url');
+        const signer = await crypto.subtle.importKey(
+            'raw',
+            base64ToUint8Array(hmacKey),
+            {
+                name: 'HMAC',
+                hash: { name: 'SHA-256' },
+            },
+            false, // Key can't be exported
+            ['sign', 'verify'],
+        );
+        const data = new TextEncoder().encode(
+            `${result.protected}.${result.payload}`,
+        );
+        const signature = await crypto.subtle.sign('HMAC', signer, data);
+        result.signature = base64ToBase64url(arrayBufferToBase64(signature));
 
         return result;
     }
@@ -235,38 +293,43 @@ class HttpClient {
      * @param {object} [opts]
      * @param {string} [opts.nonce] JWS nonce
      * @param {string} [opts.kid] JWS KID
-     * @returns {object} JWS request body
+     * @returns {Promise<object>} JWS request body
      */
 
-    createSignedBody(url, payload = null, { nonce = null, kid = null } = {}) {
-        const jwk = this.getJwk();
+    async createSignedBody(
+        url,
+        payload = null,
+        { nonce = null, kid = null } = {},
+    ) {
+        const jwk = await this.getJwk();
+        const [{ privateKey }, sigalg] = await getWebCryptoKeyPair(this.accountKey);
         let headerAlg = 'RS256';
-        let signerAlg = 'SHA256';
-
-        /* https://datatracker.ietf.org/doc/html/rfc7518#section-3.1 */
         if (jwk.crv && (jwk.kty === 'EC')) {
             headerAlg = 'ES256';
 
             if (jwk.crv === 'P-384') {
                 headerAlg = 'ES384';
-                signerAlg = 'SHA384';
             }
             else if (jwk.crv === 'P-521') {
                 headerAlg = 'ES512';
-                signerAlg = 'SHA512';
             }
         }
-
         /* Prepare body and signer */
-        const result = this.prepareSignedBody(headerAlg, url, payload, { nonce, kid });
-        const signer = createSign(signerAlg).update(`${result.protected}.${result.payload}`, 'utf8');
+        const result = await this.prepareSignedBody(headerAlg, url, payload, {
+            nonce,
+            kid,
+        });
 
+        const data = new TextEncoder().encode(
+            `${result.protected}.${result.payload}`,
+        );
+        const signature = await crypto.subtle.sign(
+            sigalg,
+            privateKey,
+            data,
+        );
         /* Signature - https://stackoverflow.com/questions/39554165 */
-        result.signature = signer.sign({
-            key: this.accountKey,
-            padding: RSA_PKCS1_PADDING,
-            dsaEncoding: 'ieee-p1363',
-        }, 'base64url');
+        result.signature = base64ToBase64url(arrayBufferToBase64(signature));
 
         return result;
     }
@@ -286,19 +349,33 @@ class HttpClient {
      * @returns {Promise<object>} HTTP response
      */
 
-    async signedRequest(url, payload, { kid = null, nonce = null, includeExternalAccountBinding = false } = {}, attempts = 0) {
+    async signedRequest(
+        url,
+        payload,
+        {
+            kid = null,
+            nonce = null,
+            includeExternalAccountBinding = false,
+        } = {},
+        attempts = 0,
+    ) {
         if (!nonce) {
             nonce = await this.getNonce();
         }
 
         /* External account binding */
         if (includeExternalAccountBinding && this.externalAccountBinding) {
-            if (this.externalAccountBinding.kid && this.externalAccountBinding.hmacKey) {
+            if (
+                this.externalAccountBinding.kid
+                && this.externalAccountBinding.hmacKey
+            ) {
                 const jwk = await this.getJwk();
                 const eabKid = this.externalAccountBinding.kid;
                 const eabHmacKey = this.externalAccountBinding.hmacKey;
 
-                payload.externalAccountBinding = await this.createSignedHmacBody(eabHmacKey, url, jwk, { kid: eabKid });
+                payload.externalAccountBinding = await this.createSignedHmacBody(eabHmacKey, url, jwk, {
+                    kid: eabKid,
+                });
             }
         }
 
@@ -307,12 +384,25 @@ class HttpClient {
         const resp = await this.request(url, 'post', { data });
 
         /* Retry on bad nonce - https://datatracker.ietf.org/doc/html/rfc8555#section-6.5 */
-        if (resp.data && resp.data.type && (resp.status === 400) && (resp.data.type === 'urn:ietf:params:acme:error:badNonce') && (attempts < this.maxBadNonceRetries)) {
+        if (
+            resp.data
+            && resp.data.type
+            && resp.status === 400
+            && resp.data.type === 'urn:ietf:params:acme:error:badNonce'
+            && attempts < this.maxBadNonceRetries
+        ) {
             nonce = resp.headers['replay-nonce'] || null;
             attempts += 1;
 
-            log(`Caught invalid nonce error, retrying (${attempts}/${this.maxBadNonceRetries}) signed request to: ${url}`);
-            return this.signedRequest(url, payload, { kid, nonce, includeExternalAccountBinding }, attempts);
+            log(
+                `Caught invalid nonce error, retrying (${attempts}/${this.maxBadNonceRetries}) signed request to: ${url}`,
+            );
+            return this.signedRequest(
+                url,
+                payload,
+                { kid, nonce, includeExternalAccountBinding },
+                attempts,
+            );
         }
 
         /* Return response */

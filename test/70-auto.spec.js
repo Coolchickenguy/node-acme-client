@@ -58,17 +58,17 @@ describe('client.auto', () => {
 
     Object.entries({
         rsa: {
-            createKeyFn: () => acme.crypto.createPrivateRsaKey(),
+            createKeyFn: () => acme.webcrypto.createRsaKeyPair(),
             createKeyAltFns: {
-                s1024: () => acme.crypto.createPrivateRsaKey(1024),
-                s4096: () => acme.crypto.createPrivateRsaKey(4096),
+                s1024: () => acme.webcrypto.createRsaKeyPair(1024),
+                s4096: () => acme.webcrypto.createRsaKeyPair(4096),
             },
         },
         ecdsa: {
-            createKeyFn: () => acme.crypto.createPrivateEcdsaKey(),
+            createKeyFn: () => acme.webcrypto.createEcdsaKeyPair(),
             createKeyAltFns: {
-                p384: () => acme.crypto.createPrivateEcdsaKey('P-384'),
-                p521: () => acme.crypto.createPrivateEcdsaKey('P-521'),
+                p384: () => acme.webcrypto.createEcdsaKeyPair('P-384'),
+                p521: () => acme.webcrypto.createEcdsaKeyPair('P-521'),
             },
         },
     }).forEach(([name, { createKeyFn, createKeyAltFns }]) => {
@@ -115,7 +115,7 @@ describe('client.auto', () => {
              */
 
             it('should throw on invalid challenge response', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                 }, await createKeyFn());
 
@@ -128,7 +128,7 @@ describe('client.auto', () => {
             });
 
             it('should throw on invalid challenge response with opts.skipChallengeVerification=true', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                 }, await createKeyFn());
 
@@ -146,7 +146,7 @@ describe('client.auto', () => {
              */
 
             it('should throw on challengeCreate exception', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                 }, await createKeyFn());
 
@@ -159,7 +159,7 @@ describe('client.auto', () => {
             });
 
             it('should not throw on challengeRemove exception', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                 }, await createKeyFn());
 
@@ -175,7 +175,7 @@ describe('client.auto', () => {
 
             it('should settle all challenges before rejecting', async () => {
                 const results = [];
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                     altNames: [
                         `${uuid()}.${domainName}`,
@@ -210,7 +210,7 @@ describe('client.auto', () => {
              */
 
             it('should order certificate', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: testDomain,
                 }, await createKeyFn());
 
@@ -226,7 +226,7 @@ describe('client.auto', () => {
             });
 
             it('should order certificate using http-01', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: testHttpDomain,
                 }, await createKeyFn());
 
@@ -242,7 +242,7 @@ describe('client.auto', () => {
             });
 
             it('should order certificate using https-01', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: testHttpsDomain,
                 }, await createKeyFn());
 
@@ -258,7 +258,7 @@ describe('client.auto', () => {
             });
 
             it('should order certificate using dns-01', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: testDnsDomain,
                 }, await createKeyFn());
 
@@ -274,7 +274,7 @@ describe('client.auto', () => {
             });
 
             it('should order certificate using tls-alpn-01', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: testAlpnDomain,
                 }, await createKeyFn());
 
@@ -290,7 +290,7 @@ describe('client.auto', () => {
             });
 
             it('should order san certificate', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     altNames: testSanDomains,
                 }, await createKeyFn());
 
@@ -306,7 +306,7 @@ describe('client.auto', () => {
             });
 
             it('should order wildcard certificate', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     altNames: [testWildcardDomain, `*.${testWildcardDomain}`],
                 }, await createKeyFn());
 
@@ -322,7 +322,7 @@ describe('client.auto', () => {
             });
 
             it('should order certificate with opts.skipChallengeVerification=true', async () => {
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                 }, await createKeyFn());
 
@@ -343,7 +343,7 @@ describe('client.auto', () => {
                 }
 
                 await Promise.all(testIssuers.map(async (issuer) => {
-                    const [, csr] = await acme.crypto.createCsr({
+                    const [, csr] = await acme.webcrypto.createCsr({
                         commonName: `${uuid()}.${domainName}`,
                     }, await createKeyFn());
 
@@ -355,8 +355,8 @@ describe('client.auto', () => {
                         challengeRemoveFn: cts.challengeRemoveFn,
                     });
 
-                    const rootCert = acme.crypto.splitPemChain(cert).pop();
-                    const info = acme.crypto.readCertificateInfo(rootCert);
+                    const rootCert = acme.webcrypto.splitPemChain(cert).pop();
+                    const info = acme.webcrypto.readCertificateInfo(rootCert);
 
                     assert.strictEqual(issuer, info.issuer.commonName);
                 }));
@@ -367,7 +367,7 @@ describe('client.auto', () => {
                     this.skip();
                 }
 
-                const [, csr] = await acme.crypto.createCsr({
+                const [, csr] = await acme.webcrypto.createCsr({
                     commonName: `${uuid()}.${domainName}`,
                 }, await createKeyFn());
 
@@ -379,8 +379,8 @@ describe('client.auto', () => {
                     challengeRemoveFn: cts.challengeRemoveFn,
                 });
 
-                const rootCert = acme.crypto.splitPemChain(cert).pop();
-                const info = acme.crypto.readCertificateInfo(rootCert);
+                const rootCert = acme.webcrypto.splitPemChain(cert).pop();
+                const info = acme.webcrypto.readCertificateInfo(rootCert);
 
                 assert.strictEqual(testIssuers[0], info.issuer.commonName);
             });
@@ -391,7 +391,7 @@ describe('client.auto', () => {
 
             Object.entries(createKeyAltFns).forEach(([k, altKeyFn]) => {
                 it(`should order certificate with key=${k}`, async () => {
-                    const [, csr] = await acme.crypto.createCsr({
+                    const [, csr] = await acme.webcrypto.createCsr({
                         commonName: testDomain,
                     }, await altKeyFn());
 
@@ -411,7 +411,7 @@ describe('client.auto', () => {
              */
 
             it('should read certificate info', () => {
-                const info = acme.crypto.readCertificateInfo(testCertificate);
+                const info = acme.webcrypto.readCertificateInfo(testCertificate);
 
                 spec.crypto.certificateInfo(info);
                 assert.isNull(info.domains.commonName);
@@ -419,7 +419,7 @@ describe('client.auto', () => {
             });
 
             it('should read san certificate info', () => {
-                const info = acme.crypto.readCertificateInfo(testSanCertificate);
+                const info = acme.webcrypto.readCertificateInfo(testSanCertificate);
 
                 spec.crypto.certificateInfo(info);
                 assert.isNull(info.domains.commonName);
@@ -427,7 +427,7 @@ describe('client.auto', () => {
             });
 
             it('should read wildcard certificate info', () => {
-                const info = acme.crypto.readCertificateInfo(testWildcardCertificate);
+                const info = acme.webcrypto.readCertificateInfo(testWildcardCertificate);
 
                 spec.crypto.certificateInfo(info);
                 assert.isNull(info.domains.commonName);

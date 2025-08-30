@@ -4,14 +4,17 @@
  * @namespace Client
  */
 
-const { createHash } = require('crypto');
-const { getPemBodyAsB64u } = require('./crypto');
+const {
+    getPemBodyAsB64u, crypto, base64ToBase64url, arrayBufferToBase64,
+} = require('./crypto/web');
 const { log } = require('./logger');
 const HttpClient = require('./http');
 const AcmeApi = require('./api');
 const verify = require('./verify');
 const util = require('./util');
 const auto = require('./auto');
+
+const textEncoder = new TextEncoder();
 
 /**
  * ACME states
@@ -45,7 +48,7 @@ const defaultOpts = {
  * @class
  * @param {object} opts
  * @param {string} opts.directoryUrl ACME directory URL
- * @param {buffer|string} opts.accountKey PEM encoded account private key
+ * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} opts.accountKey PEM encoded account private key
  * @param {string} [opts.accountUrl] Account URL, default: `null`
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
@@ -58,7 +61,7 @@ const defaultOpts = {
  * ```js
  * const client = new acme.Client({
  *     directoryUrl: acme.directory.letsencrypt.staging,
- *     accountKey: 'Private key goes here',
+ *     accountKey: {publicKey: 'Public key goes here', privateKey: 'Private key goes here'},
  * });
  * ```
  *
@@ -66,7 +69,7 @@ const defaultOpts = {
  * ```js
  * const client = new acme.Client({
  *     directoryUrl: acme.directory.letsencrypt.staging,
- *     accountKey: 'Private key goes here',
+ *     accountKey: {publicKey: 'Public key goes here', privateKey: 'Private key goes here'},
  *     accountUrl: 'Optional account URL goes here',
  *     backoffAttempts: 10,
  *     backoffMin: 5000,
@@ -78,7 +81,7 @@ const defaultOpts = {
  * ```js
  * const client = new acme.Client({
  *     directoryUrl: 'https://acme-provider.example.com/directory-url',
- *     accountKey: 'Private key goes here',
+ *     accountKey: {publicKey: 'Public key goes here', privateKey: 'Private key goes here'},
  *     externalAccountBinding: {
  *         kid: 'YOUR-EAB-KID',
  *         hmacKey: 'YOUR-EAB-HMAC-KEY',
@@ -89,8 +92,11 @@ const defaultOpts = {
 
 class AcmeClient {
     constructor(opts) {
-        if (!Buffer.isBuffer(opts.accountKey)) {
-            opts.accountKey = Buffer.from(opts.accountKey);
+        if (!(opts.accountKey.privateKey instanceof Uint8Array)) {
+            opts.accountKey.privateKey = textEncoder.encode(opts.accountKey.privateKey);
+        }
+        if (!(opts.accountKey.publicKey instanceof Uint8Array)) {
+            opts.accountKey.publicKey = textEncoder.encode(opts.accountKey.publicKey);
         }
 
         this.opts = { ...defaultOpts, ...opts };
@@ -229,24 +235,27 @@ class AcmeClient {
     }
 
     /**
-     * Update account private key
+     * Update account public/private key
      *
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.3.5
      *
-     * @param {buffer|string} newAccountKey New PEM encoded private key
+     * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} newAccountKey New PEM encoded public/private key
      * @param {object} [data] Additional request data
      * @returns {Promise<object>} Account
      *
      * @example Update account private key
      * ```js
-     * const newAccountKey = 'New private key goes here';
+     * const newAccountKey = {publicKey: 'New public key goes here', privateKey: 'New private key goes here'};
      * const result = await client.updateAccountKey(newAccountKey);
      * ```
      */
 
     async updateAccountKey(newAccountKey, data = {}) {
-        if (!Buffer.isBuffer(newAccountKey)) {
-            newAccountKey = Buffer.from(newAccountKey);
+        if (!(newAccountKey.privateKey instanceof Uint8Array)) {
+            newAccountKey.privateKey = textEncoder.encode(newAccountKey.privateKey);
+        }
+        if (!(newAccountKey.publicKey instanceof Uint8Array)) {
+            newAccountKey.publicKey = textEncoder.encode(newAccountKey.publicKey);
         }
 
         const accountUrl = this.api.getAccountUrl();
@@ -257,7 +266,7 @@ class AcmeClient {
 
         /* Get old JWK */
         data.account = accountUrl;
-        data.oldKey = this.http.getJwk();
+        data.oldKey = await this.http.getJwk();
 
         /* Get signed request body from new client */
         const url = await newHttpClient.getResourceUrl('keyChange');
@@ -338,7 +347,7 @@ class AcmeClient {
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.4
      *
      * @param {object} order Order object
-     * @param {buffer|string} csr PEM encoded Certificate Signing Request
+     * @param {Uint8Array|string} csr PEM encoded Certificate Signing Request
      * @returns {Promise<object>} Order
      *
      * @example Finalize order
@@ -354,8 +363,8 @@ class AcmeClient {
             throw new Error('Unable to finalize order, URL not found');
         }
 
-        if (!Buffer.isBuffer(csr)) {
-            csr = Buffer.from(csr);
+        if (!(csr instanceof Uint8Array)) {
+            csr = textEncoder.encode(csr);
         }
 
         const data = { csr: getPemBodyAsB64u(csr) };
@@ -441,9 +450,22 @@ class AcmeClient {
      */
 
     async getChallengeKeyAuthorization(challenge) {
-        const jwk = this.http.getJwk();
-        const keysum = createHash('sha256').update(JSON.stringify(jwk));
-        const thumbprint = keysum.digest('base64url');
+        const jwk = await this.http.getJwk();
+        let keyObject;
+        if (jwk.kty === 'RSA') {
+            keyObject = { e: jwk.e, kty: jwk.kty, n: jwk.n };
+        }
+        else if (jwk.kty === 'EC') {
+            keyObject = {
+                crv: jwk.crv, kty: jwk.kty, x: jwk.x, y: jwk.y,
+            };
+        }
+        else {
+            throw new Error(`Unsupported key type: ${jwk.kty}`);
+        }
+
+        const keysum = await crypto.subtle.digest('SHA-256', textEncoder.encode(JSON.stringify(keyObject)));
+        const thumbprint = base64ToBase64url(arrayBufferToBase64(keysum));
         const result = `${challenge.token}.${thumbprint}`;
 
         /* https://datatracker.ietf.org/doc/html/rfc8555#section-8.3 */
@@ -453,7 +475,7 @@ class AcmeClient {
 
         /* https://datatracker.ietf.org/doc/html/rfc8555#section-8.4 */
         if (challenge.type === 'dns-01') {
-            return createHash('sha256').update(result).digest('base64url');
+            return base64ToBase64url(arrayBufferToBase64(await crypto.subtle.digest('SHA-256', textEncoder.encode(result))));
         }
 
         /* https://datatracker.ietf.org/doc/html/rfc8737 */
@@ -623,7 +645,7 @@ class AcmeClient {
      *
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.6
      *
-     * @param {buffer|string} cert PEM encoded certificate
+     * @param {Uint8Array|string} cert PEM encoded certificate
      * @param {object} [data] Additional request data
      * @returns {Promise}
      *
@@ -652,7 +674,7 @@ class AcmeClient {
      * Auto mode
      *
      * @param {object} opts
-     * @param {buffer|string} opts.csr Certificate Signing Request
+     * @param {Uint8Array|string} opts.csr Certificate Signing Request
      * @param {function} opts.challengeCreateFn Function returning Promise triggered before completing ACME challenge
      * @param {function} opts.challengeRemoveFn Function returning Promise triggered after completing ACME challenge
      * @param {string} [opts.email] Account email address

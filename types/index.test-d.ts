@@ -6,7 +6,7 @@ import * as acme from 'acme-client';
 
 (async () => {
     /* Client */
-    const accountKey = await acme.crypto.createPrivateKey();
+    const accountKey = await acme.webcrypto.createRsaKeyPair();
 
     const client = new acme.Client({
         accountKey,

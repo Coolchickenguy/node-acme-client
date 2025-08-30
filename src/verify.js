@@ -6,7 +6,7 @@ const dns = require('dns').promises;
 const { log } = require('./logger');
 const axios = require('./axios');
 const util = require('./util');
-const { isAlpnCertificateAuthorizationValid } = require('./crypto');
+const { isAlpnCertificateAuthorizationValid } = require('./crypto/web');
 
 // Globalthis
 const globalThisSafe = typeof globalThis === 'undefined' ? {} : globalThis; // eslint-disable-line no-undef
