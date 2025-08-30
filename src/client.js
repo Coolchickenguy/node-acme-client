@@ -5,7 +5,7 @@
  */
 
 const { createHash } = require('crypto');
-const { getPemBodyAsB64u } = require('./crypto');
+const { getPemBodyAsB64u } = require('./crypto/web');
 const { log } = require('./logger');
 const HttpClient = require('./http');
 const AcmeApi = require('./api');
@@ -257,7 +257,7 @@ class AcmeClient {
 
         /* Get old JWK */
         data.account = accountUrl;
-        data.oldKey = this.http.getJwk();
+        data.oldKey = await this.http.getJwk();
 
         /* Get signed request body from new client */
         const url = await newHttpClient.getResourceUrl('keyChange');
@@ -441,7 +441,7 @@ class AcmeClient {
      */
 
     async getChallengeKeyAuthorization(challenge) {
-        const jwk = this.http.getJwk();
+        const jwk = await this.http.getJwk();
         const keysum = createHash('sha256').update(JSON.stringify(jwk));
         const thumbprint = keysum.digest('base64url');
         const result = `${challenge.token}.${thumbprint}`;

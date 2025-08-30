@@ -4,10 +4,10 @@
 
 const { randomUUID: uuid } = require('crypto');
 const { assert } = require('chai');
-const { MockAgent, setGlobalDispatcher } = require('undici');
-const axios = require('./../src/axios');
-const HttpClient = require('./../src/http');
-const pkg = require('./../package.json');
+const { MockAgent, setGlobalDispatcher, Agent } = require('undici');
+const axios = require('../src/axios');
+const HttpClient = require('../src/http');
+const pkg = require('../package.json');
 
 describe('http', () => {
     /**
@@ -46,6 +46,7 @@ describe('http', () => {
 
     after(() => {
         mockAgent.close();
+        setGlobalDispatcher(new Agent());
     });
 
     /**

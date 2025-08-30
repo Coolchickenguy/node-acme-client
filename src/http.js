@@ -3,7 +3,7 @@
  */
 
 const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('crypto');
-const { getJwk } = require('./crypto');
+const { getJwk } = require('./crypto/web');
 const { log } = require('./logger');
 const axios = require('./axios');
 
@@ -95,12 +95,12 @@ class HttpClient {
     /**
      * Get JSON Web Key
      *
-     * @returns {object} JSON Web Key
+     * @returns {Promise<object>} JSON Web Key
      */
 
-    getJwk() {
+    async getJwk() {
         if (!this.jwk) {
-            this.jwk = getJwk(this.accountKey);
+            this.jwk = await getJwk(this.accountKey);
         }
 
         return this.jwk;
@@ -168,10 +168,10 @@ class HttpClient {
      * @param {object} [opts]
      * @param {string} [opts.nonce] JWS anti-replay nonce
      * @param {string} [opts.kid] JWS KID
-     * @returns {object} Signed HTTP request body
+     * @returns {Promise<object>} Signed HTTP request body
      */
 
-    prepareSignedBody(alg, url, payload = null, { nonce = null, kid = null } = {}) {
+    async prepareSignedBody(alg, url, payload = null, { nonce = null, kid = null } = {}) {
         const header = { alg, url };
 
         /* Nonce */
@@ -185,7 +185,7 @@ class HttpClient {
             header.kid = kid;
         }
         else {
-            header.jwk = this.getJwk();
+            header.jwk = await this.getJwk();
         }
 
         /* Body */
@@ -204,11 +204,11 @@ class HttpClient {
      * @param {object} [opts]
      * @param {string} [opts.nonce] JWS anti-replay nonce
      * @param {string} [opts.kid] JWS KID
-     * @returns {object} Signed HMAC request body
+     * @returns {Promise<object>} Signed HMAC request body
      */
 
-    createSignedHmacBody(hmacKey, url, payload = null, { nonce = null, kid = null } = {}) {
-        const result = this.prepareSignedBody('HS256', url, payload, { nonce, kid });
+    async createSignedHmacBody(hmacKey, url, payload = null, { nonce = null, kid = null } = {}) {
+        const result = await this.prepareSignedBody('HS256', url, payload, { nonce, kid });
 
         /* Signature */
         const signer = createHmac('SHA256', Buffer.from(hmacKey, 'base64')).update(`${result.protected}.${result.payload}`, 'utf8');
@@ -227,11 +227,11 @@ class HttpClient {
      * @param {object} [opts]
      * @param {string} [opts.nonce] JWS nonce
      * @param {string} [opts.kid] JWS KID
-     * @returns {object} JWS request body
+     * @returns {Promise<object>} JWS request body
      */
 
-    createSignedBody(url, payload = null, { nonce = null, kid = null } = {}) {
-        const jwk = this.getJwk();
+    async createSignedBody(url, payload = null, { nonce = null, kid = null } = {}) {
+        const jwk = await this.getJwk();
         let headerAlg = 'RS256';
         let signerAlg = 'SHA256';
 
@@ -250,7 +250,7 @@ class HttpClient {
         }
 
         /* Prepare body and signer */
-        const result = this.prepareSignedBody(headerAlg, url, payload, { nonce, kid });
+        const result = await this.prepareSignedBody(headerAlg, url, payload, { nonce, kid });
         const signer = createSign(signerAlg).update(`${result.protected}.${result.payload}`, 'utf8');
 
         /* Signature - https://stackoverflow.com/questions/39554165 */
