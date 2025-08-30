@@ -3,11 +3,13 @@
  */
 
 const dns = require('dns').promises;
-const https = require('https');
 const { log } = require('./logger');
 const axios = require('./axios');
 const util = require('./util');
 const { isAlpnCertificateAuthorizationValid } = require('./crypto');
+
+// Globalthis
+const globalThisSafe = typeof globalThis === 'undefined' ? {} : globalThis; // eslint-disable-line no-undef
 
 /**
  * Verify ACME HTTP challenge
@@ -21,24 +23,62 @@ const { isAlpnCertificateAuthorizationValid } = require('./crypto');
  * @returns {Promise<boolean>}
  */
 
-async function verifyHttpChallenge(authz, challenge, keyAuthorization, suffix = `/.well-known/acme-challenge/${challenge.token}`) {
+async function verifyHttpChallenge(
+    authz,
+    challenge,
+    keyAuthorization,
+    suffix = `/.well-known/acme-challenge/${challenge.token}`,
+) {
     const httpPort = axios.defaults.acmeSettings.httpChallengePort || 80;
     const challengeUrl = `http://${authz.identifier.value}:${httpPort}${suffix}`;
 
     /* May redirect to HTTPS with invalid/self-signed cert - https://letsencrypt.org/docs/challenge-types/#http-01-challenge */
-    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+    let oldAgent;
+    const globalDispacher = Symbol.for('undici.globalDispatcher.1');
+    if (globalThisSafe[globalDispacher] === undefined) {
+        fetch().catch(() => {});
+    }
 
-    log(`Sending HTTP query to ${authz.identifier.value}, suffix: ${suffix}, port: ${httpPort}`);
-    const resp = await axios.get(challengeUrl, { httpsAgent });
+    if (globalThisSafe[globalDispacher] === undefined) {
+        log('Could not find dispacher, are you in a non-undici enviorment?');
+    }
+    else {
+        oldAgent = globalThisSafe[globalDispacher];
+        const Agent = oldAgent.constructor;
+        globalThisSafe[globalDispacher] = new Agent({
+            connect: {
+                rejectUnauthorized: false,
+            },
+        });
+    }
+
+    log(
+        `Sending HTTP query to ${authz.identifier.value}, suffix: ${suffix}, port: ${httpPort}`,
+    );
+    const resp = await (async () => {
+        try {
+            return await axios.get(challengeUrl);
+        }
+        finally {
+            // Reset global dispacher
+            if (oldAgent !== undefined) {
+                globalThisSafe[globalDispacher] = oldAgent;
+            }
+        }
+    })();
     const data = (resp.data || '').replace(/\s+$/, '');
 
     log(`Query successful, HTTP status code: ${resp.status}`);
 
-    if (!data || (data !== keyAuthorization)) {
-        throw new Error(`Authorization not found in HTTP response from ${authz.identifier.value}`);
+    if (!data || data !== keyAuthorization) {
+        throw new Error(
+            `Authorization not found in HTTP response from ${authz.identifier.value}`,
+        );
     }
 
-    log(`Key authorization match for ${challenge.type}/${authz.identifier.value}, ACME challenge verified`);
+    log(
+        `Key authorization match for ${challenge.type}/${authz.identifier.value}, ACME challenge verified`,
+    );
     return true;
 }
 
@@ -53,7 +93,9 @@ async function walkDnsChallengeRecord(recordName, resolver = dns) {
         const cnameRecords = await resolver.resolveCname(recordName);
 
         if (cnameRecords.length) {
-            log(`CNAME record found at ${recordName}, new challenge record name: ${cnameRecords[0]}`);
+            log(
+                `CNAME record found at ${recordName}, new challenge record name: ${cnameRecords[0]}`,
+            );
             return walkDnsChallengeRecord(cnameRecords[0]);
         }
     }
@@ -91,7 +133,12 @@ async function walkDnsChallengeRecord(recordName, resolver = dns) {
  * @returns {Promise<boolean>}
  */
 
-async function verifyDnsChallenge(authz, challenge, keyAuthorization, prefix = '_acme-challenge.') {
+async function verifyDnsChallenge(
+    authz,
+    challenge,
+    keyAuthorization,
+    prefix = '_acme-challenge.',
+) {
     let recordValues = [];
     const recordName = `${prefix}${authz.identifier.value}`;
     log(`Resolving DNS TXT from record: ${recordName}`);
@@ -103,18 +150,31 @@ async function verifyDnsChallenge(authz, challenge, keyAuthorization, prefix = '
     }
     catch (e) {
         /* Authoritative DNS resolver */
-        log(`Error using default resolver, attempting to resolve TXT with authoritative NS: ${e.message}`);
-        const authoritativeResolver = await util.getAuthoritativeDnsResolver(recordName);
-        recordValues = await walkDnsChallengeRecord(recordName, authoritativeResolver);
+        log(
+            `Error using default resolver, attempting to resolve TXT with authoritative NS: ${e.message}`,
+        );
+        const authoritativeResolver = await util.getAuthoritativeDnsResolver(
+            recordName,
+        );
+        recordValues = await walkDnsChallengeRecord(
+            recordName,
+            authoritativeResolver,
+        );
     }
 
-    log(`DNS query finished successfully, found ${recordValues.length} TXT records`);
+    log(
+        `DNS query finished successfully, found ${recordValues.length} TXT records`,
+    );
 
     if (!recordValues.length || !recordValues.includes(keyAuthorization)) {
-        throw new Error(`Authorization not found in DNS TXT record: ${recordName}`);
+        throw new Error(
+            `Authorization not found in DNS TXT record: ${recordName}`,
+        );
     }
 
-    log(`Key authorization match for ${challenge.type}/${recordName}, ACME challenge verified`);
+    log(
+        `Key authorization match for ${challenge.type}/${recordName}, ACME challenge verified`,
+    );
     return true;
 }
 
@@ -134,14 +194,28 @@ async function verifyTlsAlpnChallenge(authz, challenge, keyAuthorization) {
     const host = authz.identifier.value;
     log(`Establishing TLS connection with host: ${host}:${tlsAlpnPort}`);
 
-    const certificate = await util.retrieveTlsAlpnCertificate(host, tlsAlpnPort);
-    log('Certificate received from server successfully, matching key authorization in ALPN');
+    const certificate = await util.retrieveTlsAlpnCertificate(
+        host,
+        tlsAlpnPort,
+    );
+    log(
+        'Certificate received from server successfully, matching key authorization in ALPN',
+    );
 
-    if (!isAlpnCertificateAuthorizationValid(certificate, keyAuthorization)) {
-        throw new Error(`Authorization not found in certificate from ${authz.identifier.value}`);
+    if (
+        !(await isAlpnCertificateAuthorizationValid(
+            certificate,
+            keyAuthorization,
+        ))
+    ) {
+        throw new Error(
+            `Authorization not found in certificate from ${authz.identifier.value}`,
+        );
     }
 
-    log(`Key authorization match for ${challenge.type}/${authz.identifier.value}, ACME challenge verified`);
+    log(
+        `Key authorization match for ${challenge.type}/${authz.identifier.value}, ACME challenge verified`,
+    );
     return true;
 }
 

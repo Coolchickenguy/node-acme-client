@@ -5,8 +5,7 @@
 const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('crypto');
 const { getJwk } = require('./crypto');
 const { log } = require('./logger');
-// const axios = require('./axios');
-import xior from 'xior';
+const axios = require('./axios');
 
 /**
  * ACME HTTP client
@@ -56,15 +55,17 @@ class HttpClient {
 
         /* Request */
         log(`HTTP request: ${method} ${url}`);
-        // const resp = await axios.request(opts);
-        let resp = await xior.request(opts);
-        const headers = {};
-        for (const [key, value] of resp.headers) {
-            headers[key] = value;
-        }
-        resp.headers = headers
+        const resp = await axios.request(opts);
 
         log(`RESP ${resp.status} ${method} ${url}`);
+
+        // Remap headers
+        const headers = {};
+        for (const [key, value] of resp.headers) { // eslint-disable-line no-restricted-syntax
+            headers[key] = value;
+        }
+        resp.headers = headers;
+
         return resp;
     }
 
@@ -293,16 +294,16 @@ class HttpClient {
         /* External account binding */
         if (includeExternalAccountBinding && this.externalAccountBinding) {
             if (this.externalAccountBinding.kid && this.externalAccountBinding.hmacKey) {
-                const jwk = this.getJwk();
+                const jwk = await this.getJwk();
                 const eabKid = this.externalAccountBinding.kid;
                 const eabHmacKey = this.externalAccountBinding.hmacKey;
 
-                payload.externalAccountBinding = this.createSignedHmacBody(eabHmacKey, url, jwk, { kid: eabKid });
+                payload.externalAccountBinding = await this.createSignedHmacBody(eabHmacKey, url, jwk, { kid: eabKid });
             }
         }
 
         /* Sign body and send request */
-        const data = this.createSignedBody(url, payload, { nonce, kid });
+        const data = await this.createSignedBody(url, payload, { nonce, kid });
         const resp = await this.request(url, 'post', { data });
 
         /* Retry on bad nonce - https://datatracker.ietf.org/doc/html/rfc8555#section-6.5 */

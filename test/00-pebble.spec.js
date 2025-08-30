@@ -4,8 +4,8 @@
 
 const dns = require('dns').promises;
 const { randomUUID: uuid } = require('crypto');
-const https = require('https');
 const { assert } = require('chai');
+const { setGlobalDispatcher, getGlobalDispatcher, Agent } = require('undici');
 const cts = require('./challtestsrv');
 const axios = require('./../src/axios');
 const { retrieveTlsAlpnCertificate } = require('./../src/util');
@@ -17,7 +17,13 @@ const httpsPort = axios.defaults.acmeSettings.httpsChallengePort || 443;
 const tlsAlpnPort = axios.defaults.acmeSettings.tlsAlpnChallengePort || 443;
 
 describe('pebble', () => {
-    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+    let originalDispatcher;
+
+    const undiciAgent = new Agent({
+        connect: {
+            rejectUnauthorized: false,
+        },
+    });
 
     const testAHost = `${uuid()}.${domainName}`;
     const testARecords = ['1.1.1.1', '2.2.2.2'];
@@ -43,9 +49,18 @@ describe('pebble', () => {
      */
 
     before(function () {
+        originalDispatcher = getGlobalDispatcher();
         if (!cts.isEnabled()) {
             this.skip();
         }
+    });
+
+    /**
+     * Reset to origional dispacher just in case it crashed partway
+     */
+
+    afterEach(() => {
+        setGlobalDispatcher(originalDispatcher);
     });
 
     /**
@@ -120,8 +135,10 @@ describe('pebble', () => {
 
     describe('https-01', () => {
         it('should not locate challenge response', async () => {
-            const r1 = await axios.get(`http://${testHttps01ChallengeHost}:${httpPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`, { httpsAgent });
-            const r2 = await axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`, { httpsAgent });
+            setGlobalDispatcher(undiciAgent);
+            const r1 = await axios.get(`http://${testHttps01ChallengeHost}:${httpPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
+            const r2 = await axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
+            setGlobalDispatcher(originalDispatcher);
 
             [r1, r2].forEach((resp) => {
                 assert.isString(resp.data);
@@ -137,21 +154,24 @@ describe('pebble', () => {
         it('should 302 with self-signed cert', async () => {
             /* Assert HTTP 302 */
             const resp = await axios.get(`http://${testHttps01ChallengeHost}:${httpPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`, {
-                maxRedirects: 0,
-                validateStatus: null,
+                redirect: 'manual',
             });
 
             assert.strictEqual(resp.status, 302);
-            assert.strictEqual(resp.headers.location, `https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
+            assert.strictEqual(resp.headers.get('location'), `https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
 
             /* Self-signed cert test */
             await assert.isRejected(axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`));
-            await assert.isFulfilled(axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`, { httpsAgent }));
+            setGlobalDispatcher(undiciAgent);
+            await assert.isFulfilled(axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`));
+            setGlobalDispatcher(originalDispatcher);
         });
 
         it('should locate challenge response', async () => {
-            const r1 = await axios.get(`http://${testHttps01ChallengeHost}:${httpPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`, { httpsAgent });
-            const r2 = await axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`, { httpsAgent });
+            setGlobalDispatcher(undiciAgent);
+            const r1 = await axios.get(`http://${testHttps01ChallengeHost}:${httpPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
+            const r2 = await axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
+            setGlobalDispatcher(originalDispatcher);
 
             [r1, r2].forEach((resp) => {
                 assert.isString(resp.data);
