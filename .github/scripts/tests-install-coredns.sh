@@ -4,7 +4,7 @@
 #
 set -euo pipefail
 
-arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo x64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
+arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo amd64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
 
 # Download and install
 wget -nv "https://github.com/coredns/coredns/releases/download/v${COREDNS_VERSION}/coredns_${COREDNS_VERSION}_linux_${arch}.tgz" -O /tmp/coredns.tgz

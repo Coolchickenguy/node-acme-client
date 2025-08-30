@@ -5,7 +5,7 @@
 set -euo pipefail
 
 CONFIG_NAME="pebble-config.json"
-arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo x64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
+arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo amd64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
 
 # Use Pebble EAB config if enabled
 set +u

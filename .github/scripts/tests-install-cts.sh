@@ -4,7 +4,7 @@
 #
 set -euo pipefail
 
-arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo x64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
+arch=$(sh -c 'arch=$(uname -m); case "$arch" in aarch64) echo arm64 ;; x86_64) echo amd64 ;; armv7l|armv6l) echo arm ;; *) echo "$arch" ;; esac')
 
 # Download and install
 wget -nv "https://github.com/letsencrypt/pebble/releases/download/v${PEBBLECTS_VERSION}/pebble-challtestsrv-linux-${arch}.tar.gz" -O /tmp/pebble-challtestsrv.tar.gz
