@@ -4,7 +4,7 @@ on: [push, pull_request]
 jobs:
   test:
     name: node=${{matrix.node}} eab=${{matrix.eab}}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     strategy:
       matrix:
