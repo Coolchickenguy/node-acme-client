@@ -4,7 +4,7 @@
 
 const { randomUUID: uuid } = require('crypto');
 const { assert } = require('chai');
-const { MockAgent, setGlobalDispatcher, Agent } = require('undici');
+const { MockAgent, setGlobalDispatcher, getGlobalDispatcher } = require('undici');
 const axios = require('../src/axios');
 const HttpClient = require('../src/http');
 const pkg = require('../package.json');
@@ -22,12 +22,14 @@ describe('http', () => {
      * @type {import("undici").Interceptable}
      */
     let mockPool;
+    let originalDispatcher;
 
     const endpoint = `http://${uuid()}.example.com`;
     const defaultUserAgent = `node-${pkg.name}/${pkg.version}`;
     const customUserAgent = 'custom-ua-123';
 
     before(() => {
+        originalDispatcher = getGlobalDispatcher();
         // Setup global dispatcher with undici MockAgent
         mockAgent = new MockAgent();
         mockAgent.disableNetConnect(); // Disable real HTTP requests
@@ -46,7 +48,7 @@ describe('http', () => {
 
     after(() => {
         mockAgent.close();
-        setGlobalDispatcher(new Agent());
+        setGlobalDispatcher(originalDispatcher);
     });
 
     /**
