@@ -2,7 +2,7 @@
  * acme-client type definitions
  */
 
-import { AxiosInstance } from 'axios';
+import { XiorInstance } from 'xior';
 import * as rfc8555 from './rfc8555';
 
 export type PrivateKeyBuffer = Buffer;
@@ -181,7 +181,7 @@ export const forge: CryptoLegacyInterface;
  * Axios
  */
 
-export const axios: AxiosInstance;
+export const axios: XiorInstance;
 
 /**
  * Logger
