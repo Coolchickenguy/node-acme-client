@@ -52,9 +52,7 @@ describe('pebble', () => {
         if (!cts.isEnabled()) {
             this.skip();
         }
-        else {
-            originalDispatcher = getGlobalDispatcher();
-        }
+        originalDispatcher = getGlobalDispatcher();
     });
 
     /**

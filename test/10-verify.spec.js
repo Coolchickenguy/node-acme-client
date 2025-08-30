@@ -46,11 +46,9 @@ describe('verify', () => {
         if (!cts.isEnabled()) {
             this.skip();
         }
-        else {
-            // Allow self-signed certificates to interact with the pebble server (uses self-signed certificates)
-            originalDispatcher = getGlobalDispatcher();
-            setGlobalDispatcher(undiciAgent);
-        }
+        // Allow self-signed certificates to interact with the pebble server (uses self-signed certificates)
+        originalDispatcher = getGlobalDispatcher();
+        setGlobalDispatcher(undiciAgent);
     });
 
     /**
