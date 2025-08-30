@@ -58,6 +58,14 @@ class HttpClient {
         const resp = await axios.request(opts);
 
         log(`RESP ${resp.status} ${method} ${url}`);
+
+        // Remap headers
+        const headers = {};
+        for (const [key, value] of resp.headers) {
+            headers[key] = value;
+        }
+        resp.headers = headers
+
         return resp;
     }
 
