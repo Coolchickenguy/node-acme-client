@@ -49,10 +49,10 @@ describe('pebble', () => {
      */
 
     before(function () {
+        originalDispatcher = getGlobalDispatcher();
         if (!cts.isEnabled()) {
             this.skip();
         }
-        originalDispatcher = getGlobalDispatcher();
     });
 
     /**

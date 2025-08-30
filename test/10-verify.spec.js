@@ -43,12 +43,12 @@ describe('verify', () => {
      */
 
     before(function () {
-        if (!cts.isEnabled()) {
-            this.skip();
-        }
         // Allow self-signed certificates to interact with the pebble server (uses self-signed certificates)
         originalDispatcher = getGlobalDispatcher();
         setGlobalDispatcher(undiciAgent);
+        if (!cts.isEnabled()) {
+            this.skip();
+        }
     });
 
     /**
