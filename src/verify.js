@@ -7,7 +7,7 @@ const https = require('https');
 const { log } = require('./logger');
 const axios = require('./axios');
 const util = require('./util');
-const { isAlpnCertificateAuthorizationValid } = require('./crypto/web');
+const { isAlpnCertificateAuthorizationValid } = require('./crypto');
 
 /**
  * Verify ACME HTTP challenge

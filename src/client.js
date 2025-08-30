@@ -5,7 +5,7 @@
  */
 
 const { createHash } = require('crypto');
-const { getPemBodyAsB64u } = require('./crypto/web');
+const { getPemBodyAsB64u } = require('./crypto');
 const { log } = require('./logger');
 const HttpClient = require('./http');
 const AcmeApi = require('./api');
