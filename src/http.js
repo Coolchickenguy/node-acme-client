@@ -61,10 +61,10 @@ class HttpClient {
 
         // Remap headers
         const headers = {};
-        for (const [key, value] of resp.headers) {
+        for (const [key, value] of resp.headers) { // eslint-disable-line no-restricted-syntax
             headers[key] = value;
         }
-        resp.headers = headers
+        resp.headers = headers;
 
         return resp;
     }
