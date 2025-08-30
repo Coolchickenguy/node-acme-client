@@ -57,9 +57,9 @@ describe('verify', () => {
      * Reset undici dispacher
      */
 
-    after(function () {
+    after(() => {
         setGlobalDispatcher(originalDispatcher);
-    })
+    });
     /**
      * API
      */
