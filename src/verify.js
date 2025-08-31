@@ -9,8 +9,7 @@ const util = require('./util');
 const { isAlpnCertificateAuthorizationValid } = require('./crypto');
 
 // Globalthis
-const globalThisTemp = typeof globalThis === 'undefined' ? {} : globalThis; // eslint-disable-line no-use-before-define
-const globalThis = globalThisTemp;
+const globalThisSafe = typeof globalThis === 'undefined' ? {} : globalThis; // eslint-disable-line no-undef
 
 /**
  * Verify ACME HTTP challenge
@@ -36,17 +35,17 @@ async function verifyHttpChallenge(
     /* May redirect to HTTPS with invalid/self-signed cert - https://letsencrypt.org/docs/challenge-types/#http-01-challenge */
     let oldAgent;
     const globalDispacher = Symbol.for('undici.globalDispatcher.1');
-    if (globalThis[globalDispacher] === undefined) {
+    if (globalThisSafe[globalDispacher] === undefined) {
         fetch().catch(() => {});
     }
 
-    if (globalThis[globalDispacher] === undefined) {
+    if (globalThisSafe[globalDispacher] === undefined) {
         log('Could not find dispacher, are you in a non-undici enviorment?');
     }
     else {
-        oldAgent = globalThis[globalDispacher];
+        oldAgent = globalThisSafe[globalDispacher];
         const Agent = oldAgent.constructor;
-        globalThis[globalDispacher] = new Agent({
+        globalThisSafe[globalDispacher] = new Agent({
             connect: {
                 rejectUnauthorized: false,
             },
@@ -63,7 +62,7 @@ async function verifyHttpChallenge(
         finally {
             // Reset global dispacher
             if (oldAgent !== undefined) {
-                globalThis[globalDispacher] = oldAgent;
+                globalThisSafe[globalDispacher] = oldAgent;
             }
         }
     })();
