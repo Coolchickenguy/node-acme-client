@@ -158,7 +158,7 @@ describe('pebble', () => {
             });
 
             assert.strictEqual(resp.status, 302);
-            assert.strictEqual(resp.headers.location, `https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
+            assert.strictEqual(resp.headers.get("location"), `https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`);
 
             /* Self-signed cert test */
             await assert.isRejected(axios.get(`https://${testHttps01ChallengeHost}:${httpsPort}/.well-known/acme-challenge/${testHttps01ChallengeToken}`));
