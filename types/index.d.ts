@@ -3,11 +3,11 @@
  */
 
 import { XiorInstance } from "xior";
-import type { webcrypto } from "crypto";
+import type { webcrypto as webcryptoType } from "crypto";
 import * as rfc8555 from "./rfc8555";
 
-type CryptoKey = webcrypto.CryptoKey;
-type CryptoKeyPair = webcrypto.CryptoKeyPair;
+type CryptoKey = webcryptoType.CryptoKey;
+type CryptoKeyPair = webcryptoType.CryptoKeyPair;
 
 export type PrivateKeyBuffer = Buffer;
 export type PublicKeyBuffer = Buffer;
@@ -172,104 +172,41 @@ export interface EcdsaPublicJwk {
     y: string;
 }
 
-export interface WebCryptoInterface {
-    /**
-     * Generate a private RSA key (returns CryptoKeyPair)
-     * @param modulusLength Size of the key modulus in bits, default: 2048
-     */
-    createPrivateRsaKey(modulusLength?: number): Promise<CryptoKeyPair>;
-
-    /**
-     * Alias of createPrivateRsaKey
-     */
-    createPrivateKey: WebCryptoInterface["createPrivateRsaKey"];
-
-    /**
-     * Generate a private ECDSA key (returns CryptoKeyPair)
-     * @param namedCurve ECDSA curve name (P-256, P-384, or P-521), default: P-256
-     */
-    createPrivateEcdsaKey(namedCurve?: string): Promise<CryptoKeyPair>;
-
-    /**
-     * Export a public key from a CryptoKeyPair as JWK
-     * @param key CryptoKey or CryptoKeyPair
-     */
-    getPublicKey(key: CryptoKey | CryptoKeyPair): Promise<object>;
-
-    /**
-     * Export a public key as JWK (alias)
-     * @param key CryptoKey or CryptoKeyPair
-     */
-    getJwk: WebCryptoInterface["getPublicKey"];
-
-    /**
-     * Import a private key from JWK
-     * @param jwk JWK object
-     * @param alg Algorithm name ('RSASSA-PKCS1-v1_5' or 'ECDSA')
-     */
-    importPrivateKey(jwk: object, alg?: string): Promise<CryptoKey>;
-
-    /**
-     * Import a public key from JWK
-     * @param jwk JWK object
-     * @param alg Algorithm name ('RSASSA-PKCS1-v1_5' or 'ECDSA')
-     */
-    importPublicKey(jwk: object, alg?: string): Promise<CryptoKey>;
-
-    /**
-     * Split chain of PEM encoded objects from string into array
-     * @param chainPem PEM encoded object chain
-     */
-    splitPemChain(chainPem: Buffer | string): string[];
-
-    /**
-     * Parse body of PEM encoded object and return a Base64URL string
-     * If multiple objects are chained, the first body will be returned
-     * @param pem PEM encoded chain or object
-     */
-    getPemBodyAsB64u(pem: Buffer | string): string;
-
-    /**
-     * Read domains from a Certificate Signing Request
-     * @param csrPem PEM encoded Certificate Signing Request
-     */
-    readCsrDomains(csrPem: Buffer | string): {
-        commonName: string | null;
-        altNames: string[];
-    };
-
-    /**
-     * Read information from a certificate
-     * If multiple certificates are chained, the first will be read
-     * @param certPem PEM encoded certificate or chain
-     */
-    readCertificateInfo(certPem: Buffer | string): {
-        issuer: { commonName: string | null };
-        domains: { commonName: string | null; altNames: string[] };
-        notBefore: Date;
-        notAfter: Date;
-    };
-
-    /**
-     * Create a Certificate Signing Request
-     * @param data Subject and extension data
-     * @param keyPair Optional CryptoKeyPair to use
-     */
-    createCsr(
-        data: {
-            commonName: string;
-            country?: string;
-            state?: string;
-            locality?: string;
-            organization?: string;
-            organizationUnit?: string;
-            emailAddress?: string;
-            altNames?: string[];
-            keySize?: number;
-        },
-        keyPair?: CryptoKeyPair
-    ): Promise<[CryptoKeyPair, Buffer]>;
+export interface KeyPair {
+    privateKey: Buffer;
+    publicKey: Buffer;
 }
+
+export interface LooseKeyPair {
+    privateKey: Uint8Array | string;
+    publicKey: Uint8Array | string;
+}
+
+export interface WebCryptoInterface {
+    createRsaKeyPair(modulusLength?: number): Promise<KeyPair>;
+    createEcdsaKeyPair(namedCurve?: string): Promise<KeyPair>;
+    getJwk(pem: Uint8Array | string): Promise<object>;
+    splitPemChain(chainPem: Uint8Array | string): string[];
+    getPemBodyAsB64u(pem: Uint8Array | string): string;
+    readCsrDomains(csrPem: Uint8Array | string): CertificateDomains;
+    readCertificateInfo(certPem: Uint8Array | string): CertificateInfo;
+    createCsr(
+        data: CsrOptions,
+        keyPem?: LooseKeyPair | null
+    ): Promise<[KeyPair, Uint8Array]>;
+    createAlpnCertificate(
+        authz: { identifier: { value: string } },
+        keyAuthorization: string,
+        keyPem?: LooseKeyPair | null
+    ): Promise<[KeyPair, Buffer]>;
+    isAlpnCertificateAuthorizationValid(
+        certPem: Uint8Array | string,
+        keyAuthorization: string
+    ): Promise<boolean>;
+}
+
+export const webcrypto: WebCryptoInterface;
+
 export interface CryptoInterface {
     createPrivateKey(keySize?: number): Promise<PrivateKeyBuffer>;
     createPrivateRsaKey(keySize?: number): Promise<PrivateKeyBuffer>;
