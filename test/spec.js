@@ -165,7 +165,8 @@ spec.jwk.rsa = async (obj) => {
     assert.strictEqual(obj.kty, 'RSA');
 };
 
-spec.jwk.ecdsa = (obj) => {
+spec.jwk.ecdsa = async (obj) => {
+    obj = await obj;
     assert.isObject(obj);
     assert.isString(obj.crv);
     assert.isString(obj.kty);
