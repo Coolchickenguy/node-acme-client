@@ -24,6 +24,13 @@ const textEncoder = new TextEncoder();
 
 class HttpClient {
     constructor(directoryUrl, accountKey, externalAccountBinding = {}) {
+        if (!(accountKey.privateKey instanceof Uint8Array)) {
+            accountKey.privateKey = textEncoder.encode(accountKey.privateKey);
+        }
+        if (!(accountKey.publicKey instanceof Uint8Array)) {
+            accountKey.publicKey = textEncoder.encode(accountKey.publicKey);
+        }
+
         this.directoryUrl = directoryUrl;
         this.accountKey = accountKey;
         this.externalAccountBinding = externalAccountBinding;

@@ -202,6 +202,10 @@ exports.createEcdsaKeyPair = async function createEcdsaKeyPair(
  */
 
 async function getJwk(pem) {
+    if (pem instanceof Uint8Array) {
+        pem = textDecoder.decode(pem);
+    }
+
     // Parse the public key
     const pub = new x509.PublicKey(pem);
 
