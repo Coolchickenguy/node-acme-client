@@ -256,7 +256,7 @@ class HttpClient {
     async createSignedBody(url, payload = null, { nonce = null, kid = null } = {}) {
         const jwk = await this.getJwk();
         let headerAlg = 'RS256';
-        let signerAlg = 'SHA256';
+        let signerAlg = 'SHA-256';
 
         /* https://datatracker.ietf.org/doc/html/rfc7518#section-3.1 */
         if (jwk.crv && (jwk.kty === 'EC')) {
