@@ -58,17 +58,17 @@ describe('client.auto', () => {
 
     Object.entries({
         rsa: {
-            createKeyFn: () => acme.webcrypto.createPrivateRsaKey(),
+            createKeyFn: () => acme.webcrypto.createRsaKeyPair(),
             createKeyAltFns: {
-                s1024: () => acme.webcrypto.createPrivateRsaKey(1024),
-                s4096: () => acme.webcrypto.createPrivateRsaKey(4096),
+                s1024: () => acme.webcrypto.createRsaKeyPair(1024),
+                s4096: () => acme.webcrypto.createRsaKeyPair(4096),
             },
         },
         ecdsa: {
-            createKeyFn: () => acme.webcrypto.createPrivateEcdsaKey(),
+            createKeyFn: () => acme.webcrypto.createEcdsaKeyPair(),
             createKeyAltFns: {
-                p384: () => acme.webcrypto.createPrivateEcdsaKey('P-384'),
-                p521: () => acme.webcrypto.createPrivateEcdsaKey('P-521'),
+                p384: () => acme.webcrypto.createEcdsaKeyPair('P-384'),
+                p521: () => acme.webcrypto.createEcdsaKeyPair('P-521'),
             },
         },
     }).forEach(([name, { createKeyFn, createKeyAltFns }]) => {
