@@ -42,7 +42,7 @@ export interface Authorization extends rfc8555.Authorization {
 
 export interface ClientOptions {
     directoryUrl: string;
-    accountKey: WebPrivateKeyBuffer | PrivateKeyString;
+    accountKey: LooseKeyPair;
     accountUrl?: string;
     externalAccountBinding?: ClientExternalAccountBindingOptions;
     backoffAttempts?: number;
@@ -85,7 +85,7 @@ export class Client {
         data?: rfc8555.AccountUpdateRequest
     ): Promise<rfc8555.Account>;
     updateAccountKey(
-        newAccountKey: WebPrivateKeyBuffer | PrivateKeyString,
+        newAccountKey: LooseKeyPair,
         data?: object
     ): Promise<rfc8555.Account>;
     createOrder(data: rfc8555.OrderCreateRequest): Promise<Order>;

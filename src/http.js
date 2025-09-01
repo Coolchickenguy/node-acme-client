@@ -16,7 +16,7 @@ const textEncoder = new TextEncoder();
  *
  * @class
  * @param {string} directoryUrl ACME directory URL
- * @param {Uint8Array} accountKey PEM encoded account private key
+ * @param {import('../types').KeyPair} accountKey PEM encoded account public/private key
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
  * @param {string} [opts.externalAccountBinding.hmacKey] External account binding HMAC key
@@ -112,7 +112,7 @@ class HttpClient {
 
     async getJwk() {
         if (!this.jwk) {
-            this.jwk = await getJwk(this.accountKey);
+            this.jwk = await getJwk(this.accountKey.publicKey);
         }
 
         return this.jwk;
@@ -274,7 +274,7 @@ class HttpClient {
 
         /* Prepare body and signer */
         const result = await this.prepareSignedBody(headerAlg, url, payload, { nonce, kid });
-        const privateKeyDec = x509.PemConverter.decodeFirst(new TextDecoder().decode(this.accountKey));
+        const privateKeyDec = x509.PemConverter.decodeFirst(new TextDecoder().decode(this.accountKey.privateKey));
         const privateKey = await crypto.subtle.importKey(
             'pkcs8',
             privateKeyDec,

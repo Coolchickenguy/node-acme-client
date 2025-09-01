@@ -52,18 +52,18 @@ describe('client', () => {
 
     Object.entries({
         rsa: {
-            createKeyFn: () => acme.webcrypto.createPrivateRsaKey(),
+            createKeyFn: () => acme.webcrypto.createRsaKeyPair(),
             createKeyAltFns: {
-                s1024: () => acme.webcrypto.createPrivateRsaKey(1024),
-                s4096: () => acme.webcrypto.createPrivateRsaKey(4096),
+                s1024: () => acme.webcrypto.createRsaKeyPair(1024),
+                s4096: () => acme.webcrypto.createRsaKeyPair(4096),
             },
             jwkSpecFn: spec.jwk.rsa,
         },
         ecdsa: {
-            createKeyFn: () => acme.webcrypto.createPrivateEcdsaKey(),
+            createKeyFn: () => acme.webcrypto.createEcdsaKeyPair(),
             createKeyAltFns: {
-                p384: () => acme.webcrypto.createPrivateEcdsaKey('P-384'),
-                p521: () => acme.webcrypto.createPrivateEcdsaKey('P-521'),
+                p384: () => acme.webcrypto.createEcdsaKeyPair('P-384'),
+                p521: () => acme.webcrypto.createEcdsaKeyPair('P-521'),
             },
             jwkSpecFn: spec.jwk.ecdsa,
         },
@@ -100,12 +100,14 @@ describe('client', () => {
 
             it('should generate a private key', async () => {
                 testAccountKey = await createKeyFn();
-                assert.isTrue((testAccountKey instanceof Uint8Array));
+                assert.isTrue((testAccountKey.privateKey instanceof Uint8Array));
+                assert.isTrue((testAccountKey.publicKey instanceof Uint8Array));
             });
 
             it('should create a second private key', async () => {
                 testAccountSecondaryKey = await createKeyFn();
-                assert.isTrue((testAccountSecondaryKey instanceof Uint8Array));
+                assert.isTrue((testAccountSecondaryKey.privateKey instanceof Uint8Array));
+                assert.isTrue((testAccountSecondaryKey.publicKey instanceof Uint8Array));
             });
 
             it('should generate certificate signing request', async () => {
@@ -141,8 +143,8 @@ describe('client', () => {
                 });
             });
 
-            it('should produce a valid jwk', () => {
-                const jwk = testClient.http.getJwk();
+            it('should produce a valid jwk', async () => {
+                const jwk = await testClient.http.getJwk();
                 jwkSpecFn(jwk);
             });
 
@@ -306,10 +308,10 @@ describe('client', () => {
             });
 
             /**
-             * Change account private key
+             * Change account public/private key
              */
 
-            it('should change account private key [ACME_CAP_UPDATE_ACCOUNT_KEY]', async function () {
+            it('should change account public/private key [ACME_CAP_UPDATE_ACCOUNT_KEY]', async function () {
                 if (!capUpdateAccountKey) {
                     this.skip();
                 }

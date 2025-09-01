@@ -154,8 +154,7 @@ spec.crypto.certificateInfo = (obj) => {
 
 spec.jwk = {};
 
-spec.jwk.rsa = async (obj) => {
-    obj = await obj;
+spec.jwk.rsa = (obj) => {
     assert.isObject(obj);
     assert.isString(obj.e);
     assert.isString(obj.kty);
@@ -165,8 +164,7 @@ spec.jwk.rsa = async (obj) => {
     assert.strictEqual(obj.kty, 'RSA');
 };
 
-spec.jwk.ecdsa = async (obj) => {
-    obj = await obj;
+spec.jwk.ecdsa = (obj) => {
     assert.isObject(obj);
     assert.isString(obj.crv);
     assert.isString(obj.kty);

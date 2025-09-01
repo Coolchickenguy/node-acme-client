@@ -111,13 +111,13 @@ describe('web-crypto', () => {
                     await assert.isRejected(crypto.getJwk(testPrivateKeys[n]));
                 });
 
-                it(`${n}/should get jwk from public key`, () => {
-                    const jwk = crypto.getJwk(testPublicKeys[n]);
+                it(`${n}/should get jwk from public key`, async () => {
+                    const jwk = await crypto.getJwk(testPublicKeys[n]);
                     jwkSpecFn(jwk);
                 });
 
-                it(`${n}/should get jwk from string`, () => {
-                    const jwk = crypto.getJwk(textDecoder.decode(testPublicKeys[n]));
+                it(`${n}/should get jwk from string`, async () => {
+                    const jwk = await crypto.getJwk(textDecoder.decode(testPublicKeys[n]));
                     jwkSpecFn(jwk);
                 });
 

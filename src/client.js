@@ -48,7 +48,7 @@ const defaultOpts = {
  * @class
  * @param {object} opts
  * @param {string} opts.directoryUrl ACME directory URL
- * @param {Uint8Array|string} opts.accountKey PEM encoded account private key
+ * @param {import('../types').LooseKeyPair} opts.accountKey PEM encoded account private key
  * @param {string} [opts.accountUrl] Account URL, default: `null`
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
@@ -92,8 +92,11 @@ const defaultOpts = {
 
 class AcmeClient {
     constructor(opts) {
-        if (!(opts.accountKey instanceof Uint8Array)) {
-            opts.accountKey = textEncoder.encode(opts.accountKey);
+        if (!(opts.accountKey.privateKey instanceof Uint8Array)) {
+            opts.accountKey.privateKey = textEncoder.encode(opts.accountKey.privateKey);
+        }
+        if (!(opts.accountKey.publicKey instanceof Uint8Array)) {
+            opts.accountKey.publicKey = textEncoder.encode(opts.accountKey.publicKey);
         }
 
         this.opts = { ...defaultOpts, ...opts };
@@ -232,11 +235,11 @@ class AcmeClient {
     }
 
     /**
-     * Update account private key
+     * Update account public/private key
      *
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.3.5
      *
-     * @param {Uint8Array|string} newAccountKey New PEM encoded private key
+     * @param {import('../types').LooseKeyPair} newAccountKey New PEM encoded public/private key
      * @param {object} [data] Additional request data
      * @returns {Promise<object>} Account
      *
@@ -248,8 +251,11 @@ class AcmeClient {
      */
 
     async updateAccountKey(newAccountKey, data = {}) {
-        if (!(newAccountKey instanceof Uint8Array)) {
-            newAccountKey = textEncoder.encode(newAccountKey);
+        if (!(newAccountKey.privateKey instanceof Uint8Array)) {
+            newAccountKey.privateKey = textEncoder.encode(newAccountKey.privateKey);
+        }
+        if (!(newAccountKey.publicKey instanceof Uint8Array)) {
+            newAccountKey.publicKey = textEncoder.encode(newAccountKey.publicKey);
         }
 
         const accountUrl = this.api.getAccountUrl();
