@@ -52,18 +52,18 @@ describe('client', () => {
 
     Object.entries({
         rsa: {
-            createKeyFn: () => acme.crypto.createPrivateRsaKey(),
+            createKeyFn: () => acme.webcrypto.createPrivateRsaKey(),
             createKeyAltFns: {
-                s1024: () => acme.crypto.createPrivateRsaKey(1024),
-                s4096: () => acme.crypto.createPrivateRsaKey(4096),
+                s1024: () => acme.webcrypto.createPrivateRsaKey(1024),
+                s4096: () => acme.webcrypto.createPrivateRsaKey(4096),
             },
             jwkSpecFn: spec.jwk.rsa,
         },
         ecdsa: {
-            createKeyFn: () => acme.crypto.createPrivateEcdsaKey(),
+            createKeyFn: () => acme.webcrypto.createPrivateEcdsaKey(),
             createKeyAltFns: {
-                p384: () => acme.crypto.createPrivateEcdsaKey('P-384'),
-                p521: () => acme.crypto.createPrivateEcdsaKey('P-521'),
+                p384: () => acme.webcrypto.createPrivateEcdsaKey('P-384'),
+                p521: () => acme.webcrypto.createPrivateEcdsaKey('P-521'),
             },
             jwkSpecFn: spec.jwk.ecdsa,
         },
@@ -109,9 +109,9 @@ describe('client', () => {
             });
 
             it('should generate certificate signing request', async () => {
-                [, testCsr] = await acme.crypto.createCsr({ commonName: testDomain }, await createKeyFn());
-                [, testCsrAlpn] = await acme.crypto.createCsr({ altNames: [testDomainAlpn] }, await createKeyFn());
-                [, testCsrWildcard] = await acme.crypto.createCsr({ altNames: [testDomainWildcard] }, await createKeyFn());
+                [, testCsr] = await acme.webcrypto.createCsr({ commonName: testDomain }, await createKeyFn());
+                [, testCsrAlpn] = await acme.webcrypto.createCsr({ altNames: [testDomainAlpn] }, await createKeyFn());
+                [, testCsrWildcard] = await acme.webcrypto.createCsr({ altNames: [testDomainWildcard] }, await createKeyFn());
             });
 
             it('should resolve certificate issuers [ACME_CAP_ALTERNATE_CERT_ROOTS]', async function () {
@@ -498,7 +498,7 @@ describe('client', () => {
 
                 [testCertificate, testCertificateAlpn, testCertificateWildcard].forEach((cert) => {
                     assert.isString(cert);
-                    acme.crypto.readCertificateInfo(cert);
+                    acme.webcrypto.readCertificateInfo(cert);
                 });
             });
 
@@ -509,8 +509,8 @@ describe('client', () => {
 
                 await Promise.all(testIssuers.map(async (issuer) => {
                     const cert = await testClient.getCertificate(testOrder, issuer);
-                    const rootCert = acme.crypto.splitPemChain(cert).pop();
-                    const info = acme.crypto.readCertificateInfo(rootCert);
+                    const rootCert = acme.webcrypto.splitPemChain(cert).pop();
+                    const info = acme.webcrypto.readCertificateInfo(rootCert);
 
                     assert.strictEqual(issuer, info.issuer.commonName);
                 }));
@@ -522,8 +522,8 @@ describe('client', () => {
                 }
 
                 const cert = await testClient.getCertificate(testOrder, uuid());
-                const rootCert = acme.crypto.splitPemChain(cert).pop();
-                const info = acme.crypto.readCertificateInfo(rootCert);
+                const rootCert = acme.webcrypto.splitPemChain(cert).pop();
+                const info = acme.webcrypto.readCertificateInfo(rootCert);
 
                 assert.strictEqual(testIssuers[0], info.issuer.commonName);
             });

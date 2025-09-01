@@ -236,7 +236,7 @@ class AcmeClient {
      *
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.3.5
      *
-     * @param {buffer|string} newAccountKey New PEM encoded private key
+     * @param {Uint8Array|string} newAccountKey New PEM encoded private key
      * @param {object} [data] Additional request data
      * @returns {Promise<object>} Account
      *
@@ -626,7 +626,7 @@ class AcmeClient {
      *
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.6
      *
-     * @param {buffer|string} cert PEM encoded certificate
+     * @param {Uint8Array|string} cert PEM encoded certificate
      * @param {object} [data] Additional request data
      * @returns {Promise}
      *
@@ -655,7 +655,7 @@ class AcmeClient {
      * Auto mode
      *
      * @param {object} opts
-     * @param {buffer|string} opts.csr Certificate Signing Request
+     * @param {Uint8Array|string} opts.csr Certificate Signing Request
      * @param {function} opts.challengeCreateFn Function returning Promise triggered before completing ACME challenge
      * @param {function} opts.challengeRemoveFn Function returning Promise triggered after completing ACME challenge
      * @param {string} [opts.email] Account email address
