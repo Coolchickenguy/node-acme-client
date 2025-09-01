@@ -14,6 +14,11 @@ export type PublicKeyBuffer = Buffer;
 export type CertificateBuffer = Buffer;
 export type CsrBuffer = Buffer;
 
+export type WebPrivateKeyBuffer = Uint8Array;
+export type WebPublicKeyBuffer = Uint8Array;
+export type WebCertificateBuffer = Uint8Array;
+export type WebCsrBuffer = Uint8Array;
+
 export type PrivateKeyString = string;
 export type PublicKeyString = string;
 export type CertificateString = string;
@@ -37,7 +42,7 @@ export interface Authorization extends rfc8555.Authorization {
 
 export interface ClientOptions {
     directoryUrl: string;
-    accountKey: PrivateKeyBuffer | PrivateKeyString;
+    accountKey: WebPrivateKeyBuffer | PrivateKeyString;
     accountUrl?: string;
     externalAccountBinding?: ClientExternalAccountBindingOptions;
     backoffAttempts?: number;
@@ -51,7 +56,7 @@ export interface ClientExternalAccountBindingOptions {
 }
 
 export interface ClientAutoOptions {
-    csr: CsrBuffer | CsrString;
+    csr: WebCsrBuffer | CsrString;
     challengeCreateFn: (
         authz: Authorization,
         challenge: rfc8555.Challenge,
@@ -80,12 +85,12 @@ export class Client {
         data?: rfc8555.AccountUpdateRequest
     ): Promise<rfc8555.Account>;
     updateAccountKey(
-        newAccountKey: PrivateKeyBuffer | PrivateKeyString,
+        newAccountKey: WebPrivateKeyBuffer | PrivateKeyString,
         data?: object
     ): Promise<rfc8555.Account>;
     createOrder(data: rfc8555.OrderCreateRequest): Promise<Order>;
     getOrder(order: Pick<Order, "url">): Promise<Order>;
-    finalizeOrder(order: Order, csr: CsrBuffer | CsrString): Promise<Order>;
+    finalizeOrder(order: Order, csr: WebCsrBuffer | CsrString): Promise<Order>;
     getAuthorizations(order: Order): Promise<Authorization[]>;
     deactivateAuthorization(authz: Authorization): Promise<Authorization>;
     getChallengeKeyAuthorization(challenge: rfc8555.Challenge): Promise<string>;
@@ -99,7 +104,7 @@ export class Client {
     ): Promise<T>;
     getCertificate(order: Order, preferredChain?: string): Promise<string>;
     revokeCertificate(
-        cert: CertificateBuffer | CertificateString,
+        cert: WebCertificateBuffer | CertificateString,
         data?: rfc8555.CertificateRevocationRequest
     ): Promise<void>;
     auto(opts: ClientAutoOptions): Promise<string>;
@@ -173,13 +178,13 @@ export interface EcdsaPublicJwk {
 }
 
 export interface KeyPair {
-    privateKey: Buffer;
-    publicKey: Buffer;
+    privateKey: WebPrivateKeyBuffer;
+    publicKey: WebPublicKeyBuffer;
 }
 
 export interface LooseKeyPair {
-    privateKey: Uint8Array | string;
-    publicKey: Uint8Array | string;
+    privateKey: WebPrivateKeyBuffer | PrivateKeyString;
+    publicKey: WebPublicKeyBuffer | PublicKeyString;
 }
 
 export interface WebCryptoInterface {
@@ -198,7 +203,7 @@ export interface WebCryptoInterface {
         authz: { identifier: { value: string } },
         keyAuthorization: string,
         keyPem?: LooseKeyPair | null
-    ): Promise<[KeyPair, Buffer]>;
+    ): Promise<[KeyPair, Uint8Array]>;
     isAlpnCertificateAuthorizationValid(
         certPem: Uint8Array | string,
         keyAuthorization: string

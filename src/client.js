@@ -14,6 +14,8 @@ const verify = require('./verify');
 const util = require('./util');
 const auto = require('./auto');
 
+const textEncoder = new TextEncoder();
+
 /**
  * ACME states
  *
@@ -46,7 +48,7 @@ const defaultOpts = {
  * @class
  * @param {object} opts
  * @param {string} opts.directoryUrl ACME directory URL
- * @param {buffer|string} opts.accountKey PEM encoded account private key
+ * @param {Uint8Array|string} opts.accountKey PEM encoded account private key
  * @param {string} [opts.accountUrl] Account URL, default: `null`
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
@@ -90,8 +92,8 @@ const defaultOpts = {
 
 class AcmeClient {
     constructor(opts) {
-        if (!Buffer.isBuffer(opts.accountKey)) {
-            opts.accountKey = Buffer.from(opts.accountKey);
+        if (!(opts.accountKey instanceof Uint8Array)) {
+            opts.accountKey = textEncoder.encode(opts.accountKey);
         }
 
         this.opts = { ...defaultOpts, ...opts };
@@ -246,8 +248,8 @@ class AcmeClient {
      */
 
     async updateAccountKey(newAccountKey, data = {}) {
-        if (!Buffer.isBuffer(newAccountKey)) {
-            newAccountKey = Buffer.from(newAccountKey);
+        if (!(newAccountKey instanceof Uint8Array)) {
+            newAccountKey = textEncoder.encode(newAccountKey);
         }
 
         const accountUrl = this.api.getAccountUrl();
@@ -339,7 +341,7 @@ class AcmeClient {
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.4
      *
      * @param {object} order Order object
-     * @param {buffer|string} csr PEM encoded Certificate Signing Request
+     * @param {Uint8Array|string} csr PEM encoded Certificate Signing Request
      * @returns {Promise<object>} Order
      *
      * @example Finalize order
@@ -355,8 +357,8 @@ class AcmeClient {
             throw new Error('Unable to finalize order, URL not found');
         }
 
-        if (!Buffer.isBuffer(csr)) {
-            csr = Buffer.from(csr);
+        if (!(csr instanceof Uint8Array)) {
+            csr = textEncoder.encode(csr);
         }
 
         const data = { csr: getPemBodyAsB64u(csr) };
@@ -454,7 +456,7 @@ class AcmeClient {
 
         /* https://datatracker.ietf.org/doc/html/rfc8555#section-8.4 */
         if (challenge.type === 'dns-01') {
-            return             base64ToBase64url(arrayBufferToBase64(await crypto.subtle.digest('SHA-256',result)));
+            return base64ToBase64url(arrayBufferToBase64(await crypto.subtle.digest('SHA-256', result)));
         }
 
         /* https://datatracker.ietf.org/doc/html/rfc8737 */

@@ -9,6 +9,8 @@ const {
 const { log } = require('./logger');
 const axios = require('./axios');
 
+const textEncoder = new TextEncoder();
+
 /**
  * ACME HTTP client
  *
@@ -200,8 +202,8 @@ class HttpClient {
 
         /* Body */
         return {
-            payload: payload ? Buffer.from(JSON.stringify(payload)).toString('base64url') : '',
-            protected: Buffer.from(JSON.stringify(header)).toString('base64url'),
+            payload: payload ? base64ToBase64url(arrayBufferToBase64(textEncoder.encode(JSON.stringify(payload)))) : '',
+            protected: base64ToBase64url(arrayBufferToBase64(textEncoder.encode(JSON.stringify(header)))),
         };
     }
 

@@ -100,12 +100,12 @@ describe('client', () => {
 
             it('should generate a private key', async () => {
                 testAccountKey = await createKeyFn();
-                assert.isTrue(Buffer.isBuffer(testAccountKey));
+                assert.isTrue((testAccountKey instanceof Uint8Array));
             });
 
             it('should create a second private key', async () => {
                 testAccountSecondaryKey = await createKeyFn();
-                assert.isTrue(Buffer.isBuffer(testAccountSecondaryKey));
+                assert.isTrue((testAccountSecondaryKey instanceof Uint8Array));
             });
 
             it('should generate certificate signing request', async () => {

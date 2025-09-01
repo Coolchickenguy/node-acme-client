@@ -5,6 +5,8 @@
 const { readCsrDomains } = require('./crypto/web');
 const { log } = require('./logger');
 
+const textEncoder = new TextEncoder();
+
 const defaultOpts = {
     csr: null,
     email: null,
@@ -21,15 +23,15 @@ const defaultOpts = {
  *
  * @param {AcmeClient} client ACME client
  * @param {object} userOpts Options
- * @returns {Promise<buffer>} Certificate
+ * @returns {Promise<Uint8Array>} Certificate
  */
 
 module.exports = async (client, userOpts) => {
     const opts = { ...defaultOpts, ...userOpts };
     const accountPayload = { termsOfServiceAgreed: opts.termsOfServiceAgreed };
 
-    if (!Buffer.isBuffer(opts.csr)) {
-        opts.csr = Buffer.from(opts.csr);
+    if (!(opts.csr instanceof Uint8Array)) {
+        opts.csr = textEncoder.encode(opts.csr);
     }
 
     if (opts.email) {
