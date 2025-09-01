@@ -16,7 +16,7 @@ const textEncoder = new TextEncoder();
  *
  * @class
  * @param {string} directoryUrl ACME directory URL
- * @param {import('../types').KeyPair} accountKey PEM encoded account public/private key
+ * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} accountKey PEM encoded account public/private key
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
  * @param {string} [opts.externalAccountBinding.hmacKey] External account binding HMAC key

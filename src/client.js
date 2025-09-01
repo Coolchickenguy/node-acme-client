@@ -48,7 +48,7 @@ const defaultOpts = {
  * @class
  * @param {object} opts
  * @param {string} opts.directoryUrl ACME directory URL
- * @param {import('../types').LooseKeyPair} opts.accountKey PEM encoded account private key
+ * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} opts.accountKey PEM encoded account private key
  * @param {string} [opts.accountUrl] Account URL, default: `null`
  * @param {object} [opts.externalAccountBinding]
  * @param {string} [opts.externalAccountBinding.kid] External account binding KID
@@ -239,7 +239,7 @@ class AcmeClient {
      *
      * https://datatracker.ietf.org/doc/html/rfc8555#section-7.3.5
      *
-     * @param {import('../types').LooseKeyPair} newAccountKey New PEM encoded public/private key
+     * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} newAccountKey New PEM encoded public/private key
      * @param {object} [data] Additional request data
      * @returns {Promise<object>} Account
      *
