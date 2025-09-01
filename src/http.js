@@ -256,7 +256,7 @@ class HttpClient {
     async createSignedBody(url, payload = null, { nonce = null, kid = null } = {}) {
         const jwk = await this.getJwk();
         let headerAlg = 'RS256';
-        let signerAlg = 'SHA-256';
+        let signerAlg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
 
         /* https://datatracker.ietf.org/doc/html/rfc7518#section-3.1 */
         if (jwk.crv && (jwk.kty === 'EC')) {
@@ -264,11 +264,11 @@ class HttpClient {
 
             if (jwk.crv === 'P-384') {
                 headerAlg = 'ES384';
-                signerAlg = 'SHA384';
+                signerAlg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-384' };
             }
             else if (jwk.crv === 'P-521') {
                 headerAlg = 'ES512';
-                signerAlg = 'SHA512';
+                signerAlg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-512' };
             }
         }
 
