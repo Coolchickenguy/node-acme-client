@@ -107,6 +107,23 @@ function areUint8ArraysEqual(a, b) {
 }
 /* api */
 
+/**
+ * Generate a RSA key pair
+ *
+ * @param {number} [modulusLength] Size of the keys modulus in bits, default: `2048`
+ * @returns {Promise<{"privateKey":Uint8Array,"publicKey":Uint8Array}>} PEM encoder RSA key pair
+ * @example Generate private RSA key
+ *
+ * ```js
+ * const {publicKey, privateKey} = await acme.crypto.createRsaKeyPair();
+ * ```
+ *
+ * @example Private RSA key with modulus size 4096
+ * ```js
+ * const {publicKey, privateKey} = await acme.crypto.createRsaKeyPair(4096);
+ * ```
+ */
+
 async function createRsaKeyPair(modulusLength = 2048) {
     const keyPair = await crypto.subtle.generateKey(
         {
@@ -130,6 +147,23 @@ async function createRsaKeyPair(modulusLength = 2048) {
 }
 
 exports.createRsaKeyPair = createRsaKeyPair;
+
+/**
+ * Generate a private ECDSA key
+ *
+ * @param {string} [namedCurve] ECDSA curve name (P-256, P-384 or P-521), default `P-256`
+ * @returns {Promise<{"privateKey":Uint8Array,"publicKey":Uint8Array}>} PEM encoded ECDSA key pair
+ *
+ * @example Generate private ECDSA key
+ * ```js
+ * const {publicKey, privateKey} = await acme.webcrypto.createEcdsaKeyPair();
+ * ```
+ *
+ * @example Private ECDSA key using P-384 curve
+ * ```js
+ * const {publicKey, privateKey} = await acme.webcrypto.createEcdsaKeyPair('P-384');
+ * ```
+ */
 
 exports.createEcdsaKeyPair = async function createEcdsaKeyPair(
     namedCurve = 'P-256',
@@ -417,24 +451,58 @@ function createSubjectAltNameExtension(altNames) {
 }
 
 /**
- * Create a self-signed ALPN certificate for TLS-ALPN-01 challenges
+ * Create a Certificate Signing Request
  *
- * https://datatracker.ietf.org/doc/html/rfc8737
+ * @param {object} data
+ * @param {number} [data.keySize] Size of newly created RSA private key modulus in bits, default: `2048`
+ * @param {string} [data.commonName] FQDN of your server
+ * @param {string[]} [data.altNames] SAN (Subject Alternative Names), default: `[]`
+ * @param {string} [data.country] 2 letter country code
+ * @param {string} [data.state] State or province
+ * @param {string} [data.locality] City
+ * @param {string} [data.organization] Organization name
+ * @param {string} [data.organizationUnit] Organizational unit name
+ * @param {string} [data.emailAddress] Email address
+ * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} [keyPem] PEM encoded CSR public and private key
+ * @returns {Promise<buffer[]>} [privateKey, certificateSigningRequest]
  *
- * @param {object} authz Identifier authorization
- * @param {string} keyAuthorization Challenge key authorization
- * @param {{"publicKey": Uint8Array|string, "privateKey": Uint8Array|string}} [keyPem] PEM encoded CSR public and private key
- * @returns {Promise<Uint8Array[]>} [privateKey, certificate]
- *
- * @example Create a ALPN certificate
+ * @example Create a Certificate Signing Request
  * ```js
- * const [alpnKey, alpnCertificate] = await acme.crypto.createAlpnCertificate(authz, keyAuthorization);
+ * const [certificateKey, certificateRequest] = await acme.webcrypto.createCsr({
+ *     altNames: ['test.example.com'],
+ * });
  * ```
  *
- * @example Create a ALPN certificate with ECDSA private key
+ * @example Certificate Signing Request with both common and alternative names
+ * > *Warning*: Certificate subject common name has been [deprecated](https://letsencrypt.org/docs/glossary/#def-CN) and its use is [discouraged](https://cabforum.org/uploads/BRv1.2.3.pdf).
  * ```js
- * const alpnKey = await acme.crypto.createPrivateEcdsaKey();
- * const [, alpnCertificate] = await acme.crypto.createAlpnCertificate(authz, keyAuthorization, alpnKey);
+ * const [certificateKey, certificateRequest] = await acme.webcrypto.createCsr({
+ *     keySize: 4096,
+ *     commonName: 'test.example.com',
+ *     altNames: ['foo.example.com', 'bar.example.com'],
+ * });
+ * ```
+ *
+ * @example Certificate Signing Request with additional information
+ * ```js
+ * const [certificateKey, certificateRequest] = await acme.webcrypto.createCsr({
+ *     altNames: ['test.example.com'],
+ *     country: 'US',
+ *     state: 'California',
+ *     locality: 'Los Angeles',
+ *     organization: 'The Company Inc.',
+ *     organizationUnit: 'IT Department',
+ *     emailAddress: 'contact@example.com',
+ * });
+ * ```
+ *
+ * @example Certificate Signing Request with ECDSA private key
+ * ```js
+ * const certificateKey = await acme.crypto.createEcdsaKeyPair();
+ *
+ * const [, certificateRequest] = await acme.crypto.webcreateCsr({
+ *     altNames: ['test.example.com'],
+ * }, certificateKey);
  * ```
  */
 
@@ -504,18 +572,18 @@ exports.createCsr = async (
  *
  * @param {object} authz Identifier authorization
  * @param {string} keyAuthorization Challenge key authorization
- * @param {[Uint8Array|string,Uint8Array|string]} [keyPem] PEM encoded CSR public, private key
+ * @param {{"privateKey":Uint8Array|string,"publicKey":Uint8Array|string}} [keyPem] PEM encoded CSR public and private key
  * @returns {Promise<Uint8Array[]>} [privateKey, certificate]
  *
  * @example Create a ALPN certificate
  * ```js
- * const [alpnKey, alpnCertificate] = await acme.crypto.createAlpnCertificate(authz, keyAuthorization);
+ * const [alpnKey, alpnCertificate] = await acme.webcrypto.createAlpnCertificate(authz, keyAuthorization);
  * ```
  *
  * @example Create a ALPN certificate with ECDSA private key
  * ```js
- * const alpnKey = await acme.crypto.createPrivateEcdsaKey();
- * const [, alpnCertificate] = await acme.crypto.createAlpnCertificate(authz, keyAuthorization, alpnKey);
+ * const alpnKey = await acme.webcrypto.createEcdsaKeyPair();
+ * const [, alpnCertificate] = await acme.webcrypto.createAlpnCertificate(authz, keyAuthorization, alpnKey);
  * ```
  */
 

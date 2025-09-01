@@ -451,7 +451,7 @@ class AcmeClient {
 
     async getChallengeKeyAuthorization(challenge) {
         const jwk = await this.http.getJwk();
-        const keysum = await crypto.subtle.digest('SHA-256', JSON.stringify(jwk));
+        const keysum = await crypto.subtle.digest('SHA-256', textEncoder.encode(JSON.stringify(jwk)));
         const thumbprint = base64ToBase64url(arrayBufferToBase64(keysum));
         const result = `${challenge.token}.${thumbprint}`;
 
