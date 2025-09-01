@@ -17,6 +17,7 @@ const { crypto } = globalValue;
 if (crypto === undefined) {
     throw new Error('Web crypto is not avalible');
 }
+exports.crypto = crypto;
 /* Use Node.js Web Crypto API */
 x509.cryptoProvider.set(crypto);
 
@@ -41,6 +42,7 @@ function base64ToBase64url(base64String) {
         .replace(/\//g, '_')
         .replace(/=+$/, '');
 }
+exports.base64ToBase64url = base64ToBase64url;
 
 function formatAsPem(str) {
     return str.match(/.{1,64}/g).join('\n');
@@ -74,6 +76,17 @@ function arrayBufferToBase64(buffer) {
     const binary = String.fromCharCode(...new Uint8Array(buffer));
     return btoa(binary);
 }
+exports.arrayBufferToBase64 = arrayBufferToBase64;
+
+function base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+exports.base64ToUint8Array = base64ToUint8Array;
 
 async function exportKeyToPem(key, format, label) {
     const exported = await crypto.subtle.exportKey(format, key);

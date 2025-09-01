@@ -4,8 +4,9 @@
  * @namespace Client
  */
 
-const { createHash } = require('crypto');
-const { getPemBodyAsB64u } = require('./crypto');
+const {
+    getPemBodyAsB64u, crypto, base64ToBase64url, arrayBufferToBase64,
+} = require('./crypto/web');
 const { log } = require('./logger');
 const HttpClient = require('./http');
 const AcmeApi = require('./api');
@@ -442,8 +443,8 @@ class AcmeClient {
 
     async getChallengeKeyAuthorization(challenge) {
         const jwk = await this.http.getJwk();
-        const keysum = createHash('sha256').update(JSON.stringify(jwk));
-        const thumbprint = keysum.digest('base64url');
+        const keysum = await crypto.subtle.digest('SHA-256', JSON.stringify(jwk));
+        const thumbprint = base64ToBase64url(arrayBufferToBase64(keysum));
         const result = `${challenge.token}.${thumbprint}`;
 
         /* https://datatracker.ietf.org/doc/html/rfc8555#section-8.3 */
@@ -453,7 +454,7 @@ class AcmeClient {
 
         /* https://datatracker.ietf.org/doc/html/rfc8555#section-8.4 */
         if (challenge.type === 'dns-01') {
-            return createHash('sha256').update(result).digest('base64url');
+            return             base64ToBase64url(arrayBufferToBase64(await crypto.subtle.digest('SHA-256',result)));
         }
 
         /* https://datatracker.ietf.org/doc/html/rfc8737 */

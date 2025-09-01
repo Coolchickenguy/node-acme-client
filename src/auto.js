@@ -2,7 +2,7 @@
  * ACME auto helper
  */
 
-const { readCsrDomains } = require('./crypto');
+const { readCsrDomains } = require('./crypto/web');
 const { log } = require('./logger');
 
 const defaultOpts = {
@@ -56,7 +56,7 @@ module.exports = async (client, userOpts) => {
      */
 
     log('[auto] Parsing domains from Certificate Signing Request');
-    const { commonName, altNames } = readCsrDomains(opts.csr);
+    const { commonName, altNames } = await readCsrDomains(opts.csr);
     const uniqueDomains = Array.from(new Set([commonName].concat(altNames).filter((d) => d)));
 
     log(`[auto] Resolved ${uniqueDomains.length} unique domains from parsing the Certificate Signing Request`);

@@ -2,8 +2,10 @@
  * ACME HTTP client
  */
 
-const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('crypto');
-const { getJwk } = require('./crypto');
+const x509 = require('@peculiar/x509');
+const {
+    getJwk, base64ToUint8Array, arrayBufferToBase64, base64ToBase64url,
+} = require('./crypto/web');
 const { log } = require('./logger');
 const axios = require('./axios');
 
@@ -219,8 +221,19 @@ class HttpClient {
         const result = await this.prepareSignedBody('HS256', url, payload, { nonce, kid });
 
         /* Signature */
-        const signer = createHmac('SHA256', Buffer.from(hmacKey, 'base64')).update(`${result.protected}.${result.payload}`, 'utf8');
-        result.signature = signer.digest().toString('base64url');
+        const signer = await crypto.subtle.importKey(
+            'raw',
+            base64ToUint8Array((hmacKey)),
+            {
+                name: 'HMAC',
+                hash: { name: 'SHA-256' },
+            },
+            false, // Key can't be exported
+            ['sign', 'verify'],
+        );
+        const data = new TextEncoder().encode(`${result.protected}.${result.payload}`);
+        const signature = await crypto.subtle.sign('HMAC', signer, data);
+        result.signature = base64ToBase64url(arrayBufferToBase64(signature));
 
         return result;
     }
@@ -259,14 +272,24 @@ class HttpClient {
 
         /* Prepare body and signer */
         const result = await this.prepareSignedBody(headerAlg, url, payload, { nonce, kid });
-        const signer = createSign(signerAlg).update(`${result.protected}.${result.payload}`, 'utf8');
-
+        const privateKeyDec = x509.PemConverter.decodeFirst(new TextDecoder().decode(this.accountKey));
+        const privateKey = await crypto.subtle.importKey(
+            'pkcs8',
+            privateKeyDec,
+            signerAlg,
+            true,
+            ['sign'],
+        );
+        const data = new TextEncoder().encode(`${result.protected}.${result.payload}`);
+        const signature = await crypto.subtle.sign(
+            {
+                name: 'RSASSA-PKCS1-v1_5',
+            },
+            privateKey,
+            data,
+        );
         /* Signature - https://stackoverflow.com/questions/39554165 */
-        result.signature = signer.sign({
-            key: this.accountKey,
-            padding: RSA_PKCS1_PADDING,
-            dsaEncoding: 'ieee-p1363',
-        }, 'base64url');
+        result.signature = base64ToBase64url(arrayBufferToBase64(signature));
 
         return result;
     }
