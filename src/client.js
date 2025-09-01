@@ -61,7 +61,7 @@ const defaultOpts = {
  * ```js
  * const client = new acme.Client({
  *     directoryUrl: acme.directory.letsencrypt.staging,
- *     accountKey: 'Private key goes here',
+ *     accountKey: {publicKey: 'Public key goes here', privateKey: 'Private key goes here'},
  * });
  * ```
  *
@@ -69,7 +69,7 @@ const defaultOpts = {
  * ```js
  * const client = new acme.Client({
  *     directoryUrl: acme.directory.letsencrypt.staging,
- *     accountKey: 'Private key goes here',
+ *     accountKey: {publicKey: 'Public key goes here', privateKey: 'Private key goes here'},
  *     accountUrl: 'Optional account URL goes here',
  *     backoffAttempts: 10,
  *     backoffMin: 5000,
@@ -81,7 +81,7 @@ const defaultOpts = {
  * ```js
  * const client = new acme.Client({
  *     directoryUrl: 'https://acme-provider.example.com/directory-url',
- *     accountKey: 'Private key goes here',
+ *     accountKey: {publicKey: 'Public key goes here', privateKey: 'Private key goes here'},
  *     externalAccountBinding: {
  *         kid: 'YOUR-EAB-KID',
  *         hmacKey: 'YOUR-EAB-HMAC-KEY',
@@ -245,7 +245,7 @@ class AcmeClient {
      *
      * @example Update account private key
      * ```js
-     * const newAccountKey = 'New private key goes here';
+     * const newAccountKey = {publicKey: 'New public key goes here', privateKey: 'New private key goes here'};
      * const result = await client.updateAccountKey(newAccountKey);
      * ```
      */
@@ -462,7 +462,7 @@ class AcmeClient {
 
         /* https://datatracker.ietf.org/doc/html/rfc8555#section-8.4 */
         if (challenge.type === 'dns-01') {
-            return base64ToBase64url(arrayBufferToBase64(await crypto.subtle.digest('SHA-256', result)));
+            return base64ToBase64url(arrayBufferToBase64(await crypto.subtle.digest('SHA-256', textEncoder.encode(result))));
         }
 
         /* https://datatracker.ietf.org/doc/html/rfc8737 */
